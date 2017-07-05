@@ -13,7 +13,7 @@ import (
 
 	"github.com/cavaliercoder/grab"
 	humanize "github.com/dustin/go-humanize"
-	"github.com/jeffdupont/movie_downloader/server/config"
+	"github.com/midgarco/movie_downloader/server/config"
 )
 
 const (
