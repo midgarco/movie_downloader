@@ -9,9 +9,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"github.com/jeffdupont/movie_downloader/server/config"
-	"github.com/jeffdupont/movie_downloader/server/movie"
-	"github.com/jeffdupont/movie_downloader/server/search"
+	"github.com/midgarco/movie_downloader/server/config"
+	"github.com/midgarco/movie_downloader/server/movie"
+	"github.com/midgarco/movie_downloader/server/search"
 )
 
 var (
