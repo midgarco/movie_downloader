@@ -81,7 +81,7 @@ func download(ctx context.Context, movie *Movie, path string) error {
 
 	uri := fmt.Sprintf(downloadURL, movie.ID, movie.Extension, movie.Filename)
 
-	request, err := grab.NewRequest(uri)
+	request, err := grab.NewRequest(".", uri)
 	if err != nil {
 		return fmt.Errorf("grab request: %v", err)
 	}
@@ -110,15 +110,14 @@ func download(ctx context.Context, movie *Movie, path string) error {
 	}
 
 	go func() {
-		respch := client.DoAsync(request)
-		resp := <-respch
+		resp := client.Do(request)
 
 		log.Infof("\nDownloading %s%s\n\n", movie.Filename, movie.Extension)
 
 		// print progress until transfer is complete
 		for !resp.IsComplete() {
 			fmt.Printf("\033[1A%s/s %s / %s (%d%%)\033[K\n",
-				humanize.Bytes(uint64(resp.AverageBytesPerSecond())), humanize.Bytes(resp.BytesTransferred()), humanize.Bytes(resp.Size), int(100*resp.Progress()))
+				humanize.Bytes(uint64(resp.BytesPerSecond())), humanize.Bytes(uint64(resp.BytesComplete())), humanize.Bytes(uint64(resp.Size)), int(100*resp.Progress()))
 			time.Sleep(200 * time.Millisecond)
 		}
 
@@ -126,8 +125,8 @@ func download(ctx context.Context, movie *Movie, path string) error {
 		fmt.Printf("\033[1A\033[K")
 
 		// check for errors
-		if resp.Error != nil {
-			fmt.Fprintf(os.Stderr, "Error downloading %s: %v\n", uri, resp.Error)
+		if resp.Err() != nil {
+			fmt.Fprintf(os.Stderr, "Error downloading %s: %v\n", uri, resp.Err())
 			return
 		}
 
