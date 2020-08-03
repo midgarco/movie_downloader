@@ -5,6 +5,8 @@ go 1.12
 require (
 	github.com/cavaliercoder/grab v2.0.0+incompatible
 	github.com/dustin/go-humanize v1.0.0
+	github.com/gizak/termui/v3 v3.1.0
+	github.com/marcusolsson/tui-go v0.4.0
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550
