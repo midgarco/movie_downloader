@@ -6,14 +6,6 @@ import "google/api/annotations.proto";
 
 message Empty{}
 
-message SearchRequest {
-    string query = 1;
-}
-
-message SearchResponse {
-    SearchResults results = 1;
-}
-
 message Movie {
 	string id = 1;
 	string filename = 2; 
@@ -44,10 +36,10 @@ message Movie {
 	int32 raw_size = 26;	
 }
 
-message GSColumn {
-    string name = 1;
-    int32 num = 2;
-}
+// message GSColumn {
+//     string name = 1;
+//     int32 num = 2;
+// }
 
 message SearchResults {
 	// string base_url = 1;
@@ -76,6 +68,13 @@ message SearchResults {
 	// int32 unfiltered_results = 24; 
 }
 
+message SearchRequest {
+    string query = 1;
+}
+message SearchResponse {
+    SearchResults results = 1;
+}
+
 message DownloadRequest {
 	Movie movie = 1;
 }
@@ -95,6 +94,13 @@ message ProgressResponse {
 	map<string, Progress> active_downloads = 1;
 }
 
+message CompletedRequest {
+	int32 completed_id = 1;
+}
+message CompletedResponse {
+	map<int32, Progress> completed = 1;
+}
+
 service MovieDownloaderService {
     rpc Search(SearchRequest) returns (SearchResponse) {
         option (google.api.http) = {
@@ -109,4 +115,5 @@ service MovieDownloaderService {
 		};
 	}
 	rpc Progress(ProgressRequest) returns (stream ProgressResponse) {}
+	rpc Completed(CompletedRequest) returns (CompletedResponse) {}
 }

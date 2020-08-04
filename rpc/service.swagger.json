@@ -69,6 +69,17 @@
     }
   },
   "definitions": {
+    "moviedownloaderCompletedResponse": {
+      "type": "object",
+      "properties": {
+        "completed": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/moviedownloaderProgress"
+          }
+        }
+      }
+    },
     "moviedownloaderDownloadRequest": {
       "type": "object",
       "properties": {
