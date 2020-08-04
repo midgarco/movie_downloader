@@ -9,9 +9,9 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/apex/log"
+	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh/terminal"
-
-	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -33,7 +33,6 @@ func saveConfig(c Configuration, filename string) error {
 // LoadConfig will attempt to load the yaml configuration file. If
 // the file doesn't exist it will prompt the user to create one.
 func LoadConfig(filename string) (*Configuration, error) {
-	log.Printf("Loading config file from '%s'", filename)
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return createConfig(filename)
@@ -51,8 +50,8 @@ func LoadConfig(filename string) (*Configuration, error) {
 func createConfig(filename string) (*Configuration, error) {
 	// Create directory if needed.
 	basepath := path.Dir(filename)
-	if os.MkdirAll(basepath, 0755) != nil {
-		log.Panic("Unable to create directory for configuration file")
+	if err := os.MkdirAll(basepath, 0755); err != nil {
+		return nil, errors.Wrap(err, "Unable to create directory for configuration file")
 	}
 
 	username, password := getCredentials()
@@ -63,7 +62,7 @@ func createConfig(filename string) (*Configuration, error) {
 
 	err := saveConfig(c, filename)
 	if err != nil {
-		log.Panic(err)
+		return nil, errors.Wrap(err, "saving config")
 	}
 
 	return &c, nil
@@ -75,14 +74,14 @@ func getCredentials() (string, string) {
 	fmt.Print("Enter Username: ")
 	username, err := reader.ReadString('\n')
 	if err != nil {
-		log.Errorf("could not read username: %v\n", err)
+		log.WithError(err).Error("could not read username")
 		return "", ""
 	}
 
 	fmt.Print("Enter Password: ")
 	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
 	if err != nil {
-		log.Errorf("could not read password: %v\n", err)
+		log.WithError(err).Error("could not read password")
 		return "", ""
 	}
 	password := string(bytePassword)

@@ -4,3 +4,5 @@ agent/agent.service
 agent/pmd-agent
 server/server
 agent/agent
+
+bin

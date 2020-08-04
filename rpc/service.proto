@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package moviedownloader;
+option go_package="rpc/moviedownloader";
+import "google/api/annotations.proto";
+
+message Empty{}
+
+message SearchRequest {
+    string query = 1;
+}
+
+message SearchResponse {
+    SearchResults results = 1;
+}
+
+message Movie {
+	string id = 1;
+	string filename = 2; 
+	string codec = 3; 
+	string runtime = 4; 
+	string extension = 5;
+	string resolution = 6; 
+	string size = 7;
+	string post_date = 8;
+	string subject = 9;
+	string group = 10;
+	repeated string audio_languages = 11;
+	string full_resolution = 12;
+	string height = 13;
+	string width = 14;
+
+	int32 bps = 15;
+	int32 sample_rate = 16;
+	double fps = 17;
+	string audio_codec = 18; 
+	string poster = 19;
+	string primary_url = 20;
+	string fallback_url = 21;
+	bool virus = 22;
+	string type = 23;
+	int32 ts = 24;
+	repeated string sub_languages = 25;
+	int32 raw_size = 26;	
+}
+
+message GSColumn {
+    string name = 1;
+    int32 num = 2;
+}
+
+message SearchResults {
+	// string base_url = 1;
+	// string classic_thumbs = 2; 
+    repeated Movie movies = 3;
+	// string dl_farm = 4; 
+	// string dl_port = 5; 
+	// string down_url = 6; 
+	// Fields        map[string][]string `json:"fields"`
+	// Groups        map[string][]int    `json:"groups"`
+	// repeated GSColumn gs_columns = 9;
+	// int32 h_info = 10; 
+	// int32 hidden = 11;
+	// int32 hthm = 12; 
+	// string large_thumb = 13;
+	// string large_thumb_size = 14;
+	int32 num_pages = 15; 
+	int32 page = 16; 
+	string per_page = 17;
+	int32 count = 18; 
+	int32 returned = 19; 
+	// string ss = 20; 
+	// string st = 21; 
+	// string stemmed = 22; 
+	// string thumb_url = 23; 
+	// int32 unfiltered_results = 24; 
+}
+
+message DownloadRequest {
+	Movie movie = 1;
+}
+
+message Progress {
+	string filename = 1;
+	int32 bytes_per_second = 2;
+	int32 bytes_completed = 3;
+	int32 size = 4;
+	int32 progress = 5; 
+	Movie details = 6; 
+	string error = 7;
+}
+
+message ProgressRequest {}
+message ProgressResponse {
+	map<string, Progress> active_downloads = 1;
+}
+
+service MovieDownloaderService {
+    rpc Search(SearchRequest) returns (SearchResponse) {
+        option (google.api.http) = {
+            post: "/search"
+            body: "*"
+        };
+	}
+	rpc Download(DownloadRequest) returns (Empty) {
+		option (google.api.http) = {
+			post: "/download"
+			body: "*"
+		};
+	}
+	rpc Progress(ProgressRequest) returns (stream ProgressResponse) {}
+}
