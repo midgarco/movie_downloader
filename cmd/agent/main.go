@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -113,6 +114,7 @@ func main() {
 			log.WithError(err).Error("error connecting to pmd service")
 			return
 		}
+		log.Info("connected to progress stream")
 		for {
 			res, err := stream.Recv()
 			if err == io.EOF {
@@ -124,8 +126,17 @@ func main() {
 			}
 			downloads.RemoveItems()
 
-			for _, movie := range res.ActiveDownloads {
-				downloads.AddItems(fmt.Sprintf(" (%d%%) %s/s %s/%s : %s",
+			keys := make([]int, 0, len(res.ActiveDownloads))
+			for k := range res.ActiveDownloads {
+				keys = append(keys, int(k))
+			}
+			sort.Ints(keys)
+
+			// for idx, movie := range res.ActiveDownloads {
+			for _, idx := range keys {
+				movie := res.ActiveDownloads[int32(idx)]
+				downloads.AddItems(fmt.Sprintf("%d: (%d%%) %s/s %s/%s : %s",
+					idx,
 					movie.Progress,
 					humanize.Bytes(uint64(movie.BytesPerSecond)),
 					humanize.Bytes(uint64(movie.BytesCompleted)),

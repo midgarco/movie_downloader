@@ -36,11 +36,13 @@ type server struct {
 	cfg                 *config.Configuration
 
 	mu                 sync.Mutex
-	activeDownloads    map[string]*Download
+	activeDownloads    map[int32]*Download
 	completedDownloads map[int32]*Download
+	downloadCount      int32
 }
 
 type Download struct {
+	index          int32
 	BytesPerSecond int32
 	BytesCompleted int32
 	Size           int32
@@ -58,19 +60,9 @@ type Options struct {
 var srv *server = &server{
 	searchUrlTemplate:   "https://members.easynews.com/2.0/search/solr-search/?fly=2&gps=%s&pby=100&pno=1&s1=dtime&s1d=-&s2=nrfile&s2d=-&s3=dsize&s3d=-&sS=0&d1t=&d2t=&b1t=&b2t=&px1t=&px2t=&fps1t=&fps2t=&bps1t=&bps2t=&hz1t=&hz2t=&rn1t=&rn2t=&fty[]=VIDEO&u=1&sc=1&st=adv&safeO=0&sb=1",
 	downloadUrlTemplate: "https://members.easynews.com/dl/auto/80/%s%s/%s%[2]s",
-	activeDownloads:     map[string]*Download{},
-	completedDownloads: map[int32]*Download{
-		1: {
-			BytesPerSecond: 0,
-			BytesCompleted: 500,
-			Size:           500,
-			Progress:       100,
-			Filename:       "file.txt",
-			Details: &movie.Movie{
-				ID: "abc123",
-			},
-		},
-	},
+	activeDownloads:     map[int32]*Download{},
+	completedDownloads:  map[int32]*Download{},
+	downloadCount:       0,
 }
 
 // LoadConfig loads the configuration file into the server. If the files
@@ -202,11 +194,13 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 		UserAgent:  "grab",
 	}
 
+	s.downloadCount++
 	dl := &Download{
 		Filename: mv.Filename + mv.Extension,
 		Details:  mv,
+		index:    s.downloadCount,
 	}
-	s.activeDownloads[mv.ID] = dl
+	s.activeDownloads[s.downloadCount] = dl
 
 	go func(mv *movie.Movie, stats *Download) {
 		resp := client.Do(request)
@@ -237,8 +231,8 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 		log.Info("successfully downloaded: " + resp.Filename)
 
 		s.mu.Lock()
-		delete(s.activeDownloads, mv.ID)
-		s.completedDownloads[int32(len(s.completedDownloads))] = stats
+		delete(s.activeDownloads, stats.index)
+		s.completedDownloads[stats.index] = stats
 		s.mu.Unlock()
 	}(mv, dl)
 
@@ -251,7 +245,7 @@ func (s *server) Progress(req *moviedownloader.ProgressRequest, stream moviedown
 
 	go func() {
 		for {
-			downloads := map[string]*moviedownloader.Progress{}
+			downloads := map[int32]*moviedownloader.Progress{}
 			// show the list of active downloads
 			for id, dl := range s.activeDownloads {
 				downloads[id] = &moviedownloader.Progress{
@@ -265,8 +259,8 @@ func (s *server) Progress(req *moviedownloader.ProgressRequest, stream moviedown
 				}
 			}
 			// show the list of completed downloads
-			for _, dl := range s.completedDownloads {
-				downloads[dl.Details.ID] = &moviedownloader.Progress{
+			for id, dl := range s.completedDownloads {
+				downloads[id] = &moviedownloader.Progress{
 					BytesPerSecond: dl.BytesPerSecond,
 					BytesCompleted: dl.BytesCompleted,
 					Size:           dl.Size,
@@ -302,7 +296,7 @@ func (s *server) Progress(req *moviedownloader.ProgressRequest, stream moviedown
 // Completed ...
 func (s *server) Completed(ctx context.Context, req *moviedownloader.CompletedRequest) (*moviedownloader.CompletedResponse, error) {
 	log.WithFields(log.Fields{
-		"request": req,
+		"request": fmt.Sprintf("%#v", req),
 	}).Info("completed request")
 
 	resp := &moviedownloader.CompletedResponse{
@@ -314,28 +308,27 @@ func (s *server) Completed(ctx context.Context, req *moviedownloader.CompletedRe
 		}).Info("completed response")
 	}(resp)
 
-	id := req.CompletedId
-
 	// move the requested download to the media folder
-	if id > 0 {
-		mv := s.completedDownloads[id]
+	if req != nil && req.CompletedId > 0 {
+		mv, ok := s.completedDownloads[req.CompletedId]
+		if ok {
+			filename := filepath.Join(s.downloadPath, mv.Filename)
+			destfile := filepath.Join(s.mediaPath, mv.Filename)
 
-		filename := filepath.Join(s.downloadPath, mv.Filename)
-		destfile := filepath.Join(s.mediaPath, mv.Filename)
+			log.WithFields(log.Fields{
+				"filename":    filename,
+				"destination": destfile,
+			}).Info("move the file")
 
-		log.WithFields(log.Fields{
-			"filename":    filename,
-			"destination": destfile,
-		}).Info("move the file")
+			if err := os.Rename(filename, destfile); err != nil {
+				log.WithError(err).Error("failed to move file")
+				return nil, err
+			}
 
-		if err := os.Rename(filename, destfile); err != nil {
-			log.WithError(err).Error("failed to move file")
-			return nil, err
+			s.mu.Lock()
+			delete(s.completedDownloads, req.CompletedId)
+			s.mu.Unlock()
 		}
-
-		s.mu.Lock()
-		delete(s.completedDownloads, id)
-		s.mu.Unlock()
 	}
 
 	// list remaining completed items

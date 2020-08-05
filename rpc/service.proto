@@ -91,7 +91,7 @@ message Progress {
 
 message ProgressRequest {}
 message ProgressResponse {
-	map<string, Progress> active_downloads = 1;
+	map<int32, Progress> active_downloads = 1;
 }
 
 message CompletedRequest {
