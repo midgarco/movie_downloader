@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	"github.com/apex/log/handlers/cli"
 	"github.com/dustin/go-humanize"
-	"github.com/marcusolsson/tui-go"
-	"github.com/marcusolsson/tui-go/wordwrap"
-	"github.com/midgarco/movie_downloader/log/channel"
+	"github.com/jroimartin/gocui"
+	"github.com/midgarco/movie_downloader/log/gui"
 	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
@@ -27,6 +27,8 @@ import (
 var (
 	port     = flag.String("p", "8080", "port to run the agent on")
 	endpoint = flag.String("endpoint", "", "pmd server connection")
+
+	client moviedownloader.MovieDownloaderServiceClient
 )
 
 func init() {
@@ -34,10 +36,8 @@ func init() {
 }
 
 func main() {
-	logChan := make(chan string)
-
 	log.SetLevel(log.DebugLevel)
-	log.SetHandler(channel.New(logChan))
+	log.SetHandler(cli.New(os.Stdout))
 
 	if *endpoint == "" {
 		reader := bufio.NewReader(os.Stdin)
@@ -49,47 +49,6 @@ func main() {
 		}
 		*endpoint = strings.TrimSpace(str)
 	}
-
-	// log window
-	logs := tui.NewVBox()
-
-	logScroll := tui.NewScrollArea(logs)
-	logBox := tui.NewVBox(logScroll)
-	logBox.SetTitle("logs")
-	// logBox.SetBorder(true)
-	logBox.SetSizePolicy(tui.Expanding, tui.Maximum)
-
-	// download window
-	downloads := tui.NewList()
-
-	dlBox := tui.NewVBox(downloads)
-	dlBox.SetTitle("downloads")
-	dlBox.SetBorder(true)
-	dlBox.SetSizePolicy(tui.Expanding, tui.Maximum)
-
-	root := tui.NewVBox(dlBox, logBox)
-
-	ui, err := tui.New(root)
-	if err != nil {
-		panic(err)
-	}
-	ui.SetKeybinding("Esc", func() { ui.Quit() })
-
-	// display log content
-	go func() {
-		for txt := range logChan {
-			boxSize := logBox.Size().X
-			if boxSize < 80 {
-				boxSize = 80
-			}
-
-			logs.Append(tui.NewHBox(
-				tui.NewPadder(1, 0, tui.NewLabel(wordwrap.WrapString(txt, boxSize))),
-				tui.NewSpacer(),
-			))
-			ui.Update(func() {})
-		}
-	}()
 
 	var opts []grpc.DialOption
 	var kacp = keepalive.ClientParameters{
@@ -104,49 +63,16 @@ func main() {
 			"endpoint": *endpoint,
 		}).WithError(err).Error("failed to connect to the cap service client")
 	}
-	client := moviedownloader.NewMovieDownloaderServiceClient(conn)
+	client = moviedownloader.NewMovieDownloaderServiceClient(conn)
 	defer conn.Close()
 
-	// display download content
-	go func(client moviedownloader.MovieDownloaderServiceClient) {
-		stream, err := client.Progress(context.Background(), &moviedownloader.ProgressRequest{})
-		if err != nil {
-			log.WithError(err).Error("error connecting to pmd service")
-			return
-		}
-		log.Info("connected to progress stream")
-		for {
-			res, err := stream.Recv()
-			if err == io.EOF {
-				log.Warn("server connection lost")
-				break
-			}
-			if err != nil {
-				log.WithError(err).Error("failure receiving progress updates")
-			}
-			downloads.RemoveItems()
+	g, err := gocui.NewGui(gocui.OutputNormal)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	defer g.Close()
 
-			keys := make([]int, 0, len(res.ActiveDownloads))
-			for k := range res.ActiveDownloads {
-				keys = append(keys, int(k))
-			}
-			sort.Ints(keys)
-
-			// for idx, movie := range res.ActiveDownloads {
-			for _, idx := range keys {
-				movie := res.ActiveDownloads[int32(idx)]
-				downloads.AddItems(fmt.Sprintf("%d: (%d%%) %s/s %s/%s : %s",
-					idx,
-					movie.Progress,
-					humanize.Bytes(uint64(movie.BytesPerSecond)),
-					humanize.Bytes(uint64(movie.BytesCompleted)),
-					humanize.Bytes(uint64(movie.Size)),
-					movie.Filename,
-				))
-			}
-			ui.Update(func() {})
-		}
-	}(client)
+	g.SetManagerFunc(layout)
 
 	// listen for web requests
 	go func() {
@@ -160,9 +86,80 @@ func main() {
 		}
 	}()
 
-	if err := ui.Run(); err != nil {
-		panic(err)
+	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
+		log.Fatal(err.Error())
 	}
+
+	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
+		log.Fatal(err.Error())
+	}
+}
+
+func layout(g *gocui.Gui) error {
+	maxX, maxY := g.Size()
+	if v, err := g.SetView("log", -1, 5, maxX, maxY); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Wrap = true
+		v.Autoscroll = true
+
+		log.SetHandler(gui.New(g, cli.New(v)))
+		log.Info("hello world")
+	}
+	if v, err := g.SetView("downloads", 0, 0, maxX-1, 5); err != nil {
+		if err != gocui.ErrUnknownView {
+			return err
+		}
+		v.Wrap = true
+		v.Title = "Downloads"
+
+		// display download content
+		go func() {
+			stream, err := client.Progress(context.Background(), &moviedownloader.ProgressRequest{})
+			if err != nil {
+				log.WithError(err).Error("error connecting to pmd service")
+				return
+			}
+			log.Info("connected to progress stream")
+			for {
+				res, err := stream.Recv()
+				if err == io.EOF {
+					log.Warn("server connection lost")
+					break
+				}
+				if err != nil {
+					log.WithError(err).Error("failure receiving progress updates")
+				}
+				v.Clear()
+
+				keys := make([]int, 0, len(res.ActiveDownloads))
+				for k := range res.ActiveDownloads {
+					keys = append(keys, int(k))
+				}
+				sort.Ints(keys)
+
+				// for idx, movie := range res.ActiveDownloads {
+				for _, idx := range keys {
+					movie := res.ActiveDownloads[int32(idx)]
+					_, _ = v.Write([]byte(fmt.Sprintf("%d: (%d%%) %s/s %s/%s : %s\n",
+						idx,
+						movie.Progress,
+						humanize.Bytes(uint64(movie.BytesPerSecond)),
+						humanize.Bytes(uint64(movie.BytesCompleted)),
+						humanize.Bytes(uint64(movie.Size)),
+						movie.Filename,
+					)))
+				}
+				g.Update(func(g *gocui.Gui) error { return nil })
+			}
+		}()
+	}
+	return nil
+}
+
+func quit(g *gocui.Gui, v *gocui.View) error {
+	return gocui.ErrQuit
 }
 
 // SearchRequest ...
