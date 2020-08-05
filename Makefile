@@ -18,6 +18,9 @@ SRC = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 
 all: clean build
 
+install-agent: agent
+	@cp ./bin/pmd-agent ${GOPATH}/bin/
+
 serve: server
 	@./bin/pmd-server
 
