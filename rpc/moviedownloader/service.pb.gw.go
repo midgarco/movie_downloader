@@ -13,15 +13,16 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/grpc-ecosystem/grpc-gateway/runtime"
-	"github.com/grpc-ecosystem/grpc-gateway/utilities"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/utilities"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/grpclog"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
+// Suppress "imported and not used" errors
 var _ codes.Code
 var _ io.Reader
 var _ status.Status
@@ -45,6 +46,23 @@ func request_MovieDownloaderService_Search_0(ctx context.Context, marshaler runt
 
 }
 
+func local_request_MovieDownloaderService_Search_0(ctx context.Context, marshaler runtime.Marshaler, server MovieDownloaderServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq SearchRequest
+	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.Search(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
 func request_MovieDownloaderService_Download_0(ctx context.Context, marshaler runtime.Marshaler, client MovieDownloaderServiceClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
 	var protoReq DownloadRequest
 	var metadata runtime.ServerMetadata
@@ -60,6 +78,71 @@ func request_MovieDownloaderService_Download_0(ctx context.Context, marshaler ru
 	msg, err := client.Download(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
 
+}
+
+func local_request_MovieDownloaderService_Download_0(ctx context.Context, marshaler runtime.Marshaler, server MovieDownloaderServiceServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var protoReq DownloadRequest
+	var metadata runtime.ServerMetadata
+
+	newReader, berr := utilities.IOReaderFactory(req.Body)
+	if berr != nil {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", berr)
+	}
+	if err := marshaler.NewDecoder(newReader()).Decode(&protoReq); err != nil && err != io.EOF {
+		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
+	}
+
+	msg, err := server.Download(ctx, &protoReq)
+	return msg, metadata, err
+
+}
+
+// RegisterMovieDownloaderServiceHandlerServer registers the http handlers for service MovieDownloaderService to "mux".
+// UnaryRPC     :call MovieDownloaderServiceServer directly.
+// StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
+func RegisterMovieDownloaderServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server MovieDownloaderServiceServer) error {
+
+	mux.Handle("POST", pattern_MovieDownloaderService_Search_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/moviedownloader.MovieDownloaderService/Search")
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_MovieDownloaderService_Search_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_MovieDownloaderService_Search_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	mux.Handle("POST", pattern_MovieDownloaderService_Download_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+		ctx, cancel := context.WithCancel(req.Context())
+		defer cancel()
+		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
+		rctx, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/moviedownloader.MovieDownloaderService/Download")
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+		resp, md, err := local_request_MovieDownloaderService_Download_0(rctx, inboundMarshaler, server, req, pathParams)
+		ctx = runtime.NewServerMetadataContext(ctx, md)
+		if err != nil {
+			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
+			return
+		}
+
+		forward_MovieDownloaderService_Download_0(ctx, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
+
+	})
+
+	return nil
 }
 
 // RegisterMovieDownloaderServiceHandlerFromEndpoint is same as RegisterMovieDownloaderServiceHandler but
@@ -104,7 +187,7 @@ func RegisterMovieDownloaderServiceHandlerClient(ctx context.Context, mux *runti
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/moviedownloader.MovieDownloaderService/Search")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -124,7 +207,7 @@ func RegisterMovieDownloaderServiceHandlerClient(ctx context.Context, mux *runti
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		rctx, err := runtime.AnnotateContext(ctx, mux, req)
+		rctx, err := runtime.AnnotateContext(ctx, mux, req, "/moviedownloader.MovieDownloaderService/Download")
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -144,9 +227,9 @@ func RegisterMovieDownloaderServiceHandlerClient(ctx context.Context, mux *runti
 }
 
 var (
-	pattern_MovieDownloaderService_Search_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"search"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_MovieDownloaderService_Search_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"search"}, ""))
 
-	pattern_MovieDownloaderService_Download_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"download"}, "", runtime.AssumeColonVerbOpt(true)))
+	pattern_MovieDownloaderService_Download_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"download"}, ""))
 )
 
 var (

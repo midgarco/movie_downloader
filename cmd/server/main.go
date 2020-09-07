@@ -1,12 +1,23 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"net"
+	"net/http"
+	"net/http/pprof"
 	"os"
+	"path"
+	"strings"
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/midgarco/movie_downloader/config"
+	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var (
@@ -16,7 +27,7 @@ var (
 	configFile   = flag.String("config", os.Getenv("HOME")+"/.pmd/config.yaml", "The path to the config.yaml file")
 	port         = flag.String("p", "4050", "The server REST port")
 	grpcPort     = flag.String("grpc", "4051", "The server GRPC port")
-	downloadPath = flag.String("d", os.Getenv("HOME")+"/Movies/", "The directory to save downloads")
+	downloadPath = flag.String("d", "", "The directory to save downloads")
 	mediaPath    = flag.String("media", "", "Path to where the media will be moved once completed")
 )
 
@@ -36,125 +47,116 @@ func main() {
 	// load the configuration
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
-	viper.AddConfigPath("$HOME/.pmd")
+	viper.AddConfigPath(path.Dir(*configFile))
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Config file not found so create one
-			viper.WriteConfig()
+			if err := config.Create(*configFile); err != nil {
+				log.WithError(err).Error("failed to create config file")
+			}
+
+			// ask for the service credentials
+			username, password := config.GetCredentials()
+			viper.Set("USERNAME", username)
+			viper.Set("PASSWORD", password)
+
+			// ask for the download and media paths
+			*downloadPath = config.GetDownloadPath(*downloadPath)
+			log.Debug(*downloadPath)
+			viper.Set("DOWNLOAD_PATH", *downloadPath)
+			*mediaPath = config.GetMediaPath(*mediaPath)
+			viper.Set("MEDIA_PATH", *mediaPath)
+
+			if err := viper.WriteConfig(); err != nil {
+				log.WithError(err).Error("failed to write config file")
+			}
 		} else {
 			log.WithError(err).Fatal("could not read in the config file")
 		}
 	}
 
-	downloadPath := viper.GetString("DOWNLOAD_PATH")
-	log.Info(downloadPath)
+	if viper.GetString("DOWNLOAD_PATH") == "" {
+		*downloadPath = config.GetDownloadPath(*downloadPath)
+		viper.Set("DOWNLOAD_PATH", *downloadPath)
+	}
+	if viper.GetString("MEDIA_PATH") == "" {
+		*mediaPath = config.GetMediaPath(*mediaPath)
+		viper.Set("MEDIA_PATH", *mediaPath)
+	}
 
-	// if *downloadPath == "" {
-	// 	reader := bufio.NewReader(os.Stdin)
+	log.WithFields(log.Fields{
+		"rest_port":     *port,
+		"grpc_port":     *grpcPort,
+		"download_path": viper.GetString("DOWNLOAD_PATH"),
+		"media_path":    viper.GetString("MEDIA_PATH"),
+	}).Info("successfully loaded configuration")
 
-	// 	fmt.Print("Download path: ")
-	// 	str, err := reader.ReadString('\n')
-	// 	if err != nil {
-	// 		log.WithError(err).Fatal("could not read download path")
-	// 	}
-	// 	*downloadPath = strings.TrimSpace(str)
-	// }
-	// if *mediaPath == "" {
-	// 	reader := bufio.NewReader(os.Stdin)
+	// start the REST proxy endpoints
+	go func() {
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
-	// 	fmt.Print("Media path: ")
-	// 	str, err := reader.ReadString('\n')
-	// 	if err != nil {
-	// 		log.WithError(err).Fatal("could not read media path")
-	// 	}
-	// 	*mediaPath = strings.TrimSpace(str)
-	// }
+		mux := runtime.NewServeMux(
+			runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
+				Marshaler: &runtime.JSONPb{
+					MarshalOptions: protojson.MarshalOptions{
+						UseProtoNames:   true,
+						EmitUnpopulated: true,
+					},
+					UnmarshalOptions: protojson.UnmarshalOptions{
+						DiscardUnknown: true,
+					},
+				},
+			}),
+		)
+		opts := []grpc.DialOption{grpc.WithInsecure()}
+		err := moviedownloader.RegisterMovieDownloaderServiceHandlerFromEndpoint(ctx, mux, ":"+*grpcPort, opts)
+		if err != nil {
+			log.WithError(err).Error("Failed to register handlers")
+			return
+		}
 
-	// opts := &Options{
-	// 	DownloadPath: *downloadPath,
-	// 	MediaPath:    *mediaPath,
-	// }
+		httpmux := http.NewServeMux()
 
-	// log.WithField("filename", *configFile).Info("loading config file")
-	// if err := srv.LoadConfig(*configFile, opts); err != nil {
-	// 	log.WithFields(log.Fields{
-	// 		"filename": *configFile,
-	// 	}).WithError(err).Fatal("failed loading config file")
-	// }
+		// add support for pprof debugging and profiling
+		httpmux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
 
-	// log.WithFields(log.Fields{
-	// 	"rest_port":     *port,
-	// 	"grpc_port":     *grpcPort,
-	// 	"download_path": *downloadPath,
-	// 	"media_path":    *mediaPath,
-	// }).Info("successfully loaded configuration")
+		// add support for OpenAPI documentation
+		httpmux.HandleFunc("/swagger/", func(w http.ResponseWriter, r *http.Request) {
+			if !strings.HasSuffix(r.URL.Path, ".swagger.json") {
+				log.Errorf("Not Found: %s", r.URL.Path)
+				http.NotFound(w, r)
+				return
+			}
 
-	// // start the REST proxy endpoints
-	// go func() {
-	// 	ctx := context.Background()
-	// 	ctx, cancel := context.WithCancel(ctx)
-	// 	defer cancel()
+			log.Infof("Serving %s", r.URL.Path)
+			p := strings.TrimPrefix(r.URL.Path, "/swagger/")
+			p = path.Join("rpc", p)
+			http.ServeFile(w, r, p)
+		})
+		httpmux.Handle("/", mux)
 
-	// 	mux := runtime.NewServeMux(
-	// 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
-	// 			Marshaler: &runtime.JSONPb{
-	// 				MarshalOptions: protojson.MarshalOptions{
-	// 					UseProtoNames:   true,
-	// 					EmitUnpopulated: true,
-	// 				},
-	// 				UnmarshalOptions: protojson.UnmarshalOptions{
-	// 					DiscardUnknown: true,
-	// 				},
-	// 			},
-	// 		}),
-	// 	)
-	// 	opts := []grpc.DialOption{grpc.WithInsecure()}
-	// 	err := moviedownloader.RegisterMovieDownloaderServiceHandlerFromEndpoint(ctx, mux, ":"+*grpcPort, opts)
-	// 	if err != nil {
-	// 		log.WithError(err).Error("Failed to register handlers")
-	// 		return
-	// 	}
+		log.Info("REST server listening on port :" + *port)
+		if err := http.ListenAndServe(":"+*port, httpmux); err != nil {
+			log.WithError(err).Error("Failed to start REST service")
+			return
+		}
+	}()
 
-	// 	httpmux := http.NewServeMux()
+	// start the GRPC endpoints
+	lis, err := net.Listen("tcp", ":"+*grpcPort)
+	if err != nil {
+		log.WithError(err).Error("Failed to listen")
+		return
+	}
 
-	// 	// add support for pprof debugging and profiling
-	// 	httpmux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+	s := grpc.NewServer()
+	moviedownloader.RegisterMovieDownloaderServiceServer(s, srv)
 
-	// 	// add support for OpenAPI documentation
-	// 	httpmux.HandleFunc("/swagger/", func(w http.ResponseWriter, r *http.Request) {
-	// 		if !strings.HasSuffix(r.URL.Path, ".swagger.json") {
-	// 			log.Errorf("Not Found: %s", r.URL.Path)
-	// 			http.NotFound(w, r)
-	// 			return
-	// 		}
-
-	// 		log.Infof("Serving %s", r.URL.Path)
-	// 		p := strings.TrimPrefix(r.URL.Path, "/swagger/")
-	// 		p = path.Join("rpc", p)
-	// 		http.ServeFile(w, r, p)
-	// 	})
-	// 	httpmux.Handle("/", mux)
-
-	// 	log.Info("REST server listening on port :" + *port)
-	// 	if err := http.ListenAndServe(":"+*port, httpmux); err != nil {
-	// 		log.WithError(err).Error("Failed to start REST service")
-	// 		return
-	// 	}
-	// }()
-
-	// // start the GRPC endpoints
-	// lis, err := net.Listen("tcp", ":"+*grpcPort)
-	// if err != nil {
-	// 	log.WithError(err).Error("Failed to listen")
-	// 	return
-	// }
-
-	// s := grpc.NewServer()
-	// moviedownloader.RegisterMovieDownloaderServiceServer(s, srv)
-
-	// log.Info("GRPC server listening on port :" + *grpcPort)
-	// if err := s.Serve(lis); err != nil {
-	// 	log.WithError(err).Error("Failed to start GRPC service")
-	// 	return
-	// }
+	log.Info("GRPC server listening on port :" + *grpcPort)
+	if err := s.Serve(lis); err != nil {
+		log.WithError(err).Error("Failed to start GRPC service")
+		return
+	}
 }

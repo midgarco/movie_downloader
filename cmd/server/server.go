@@ -15,11 +15,11 @@ import (
 
 	"github.com/apex/log"
 	"github.com/cavaliercoder/grab"
-	"github.com/midgarco/movie_downloader/config"
 	"github.com/midgarco/movie_downloader/cookiejar"
 	"github.com/midgarco/movie_downloader/movie"
 	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
 	"github.com/midgarco/movie_downloader/search"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -33,7 +33,6 @@ type server struct {
 	mediaPath           string
 	searchUrlTemplate   string
 	downloadUrlTemplate string
-	cfg                 *config.Configuration
 
 	mu                 sync.Mutex
 	activeDownloads    map[int32]*Download
@@ -63,22 +62,6 @@ var srv *server = &server{
 	activeDownloads:     map[int32]*Download{},
 	completedDownloads:  map[int32]*Download{},
 	downloadCount:       0,
-}
-
-// LoadConfig loads the configuration file into the server. If the files
-// doesn't exist, it will prompt the user for the necessary credentials
-// to create the file
-func (s *server) LoadConfig(filename string, opts *Options) error {
-	cfg, err := config.LoadConfig(filename)
-	if err != nil {
-		return err
-	}
-
-	s.cfg = cfg
-	s.downloadPath = opts.DownloadPath
-	s.mediaPath = opts.MediaPath
-
-	return nil
 }
 
 // Search ...
@@ -118,7 +101,7 @@ func (s *server) Search(ctx context.Context, req *moviedownloader.SearchRequest)
 	}
 
 	// set the basic auth
-	request.SetBasicAuth(s.cfg.Username, s.cfg.Password)
+	request.SetBasicAuth(viper.GetString("USERNAME"), viper.GetString("PASSWORD"))
 
 	// save the authentication cookie
 	cookies := &cookiejar.CookieJar{}
@@ -172,7 +155,7 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 		return nil, errors.New("failed grab request")
 	}
 
-	request.HTTPRequest.SetBasicAuth(s.cfg.Username, s.cfg.Password)
+	request.HTTPRequest.SetBasicAuth(viper.GetString("USERNAME"), viper.GetString("PASSWORD"))
 	request.Filename = filepath.Join(s.downloadPath, mv.Filename+mv.Extension)
 
 	// setup the net transport for tls
