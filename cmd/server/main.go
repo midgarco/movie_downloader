@@ -24,11 +24,11 @@ var (
 	Version = "unset"
 	Build   = "unset"
 
-	configFile   = flag.String("config", os.Getenv("HOME")+"/.pmd/config.yaml", "The path to the config.yaml file")
-	port         = flag.String("p", "4050", "The server REST port")
-	grpcPort     = flag.String("grpc", "4051", "The server GRPC port")
-	downloadPath = flag.String("d", "", "The directory to save downloads")
-	mediaPath    = flag.String("media", "", "Path to where the media will be moved once completed")
+	configFile = flag.String("config", os.Getenv("HOME")+"/.pmd/config.yaml", "The path to the config.yaml file")
+	port       = flag.String("p", "4050", "The server REST port")
+	grpcPort   = flag.String("grpc", "4051", "The server GRPC port")
+	// downloadPath = flag.String("d", "", "The directory to save downloads")
+	// mediaPath    = flag.String("media", "", "Path to where the media will be moved once completed")
 )
 
 func init() {
@@ -61,11 +61,12 @@ func main() {
 			viper.Set("PASSWORD", password)
 
 			// ask for the download and media paths
-			*downloadPath = config.GetDownloadPath(*downloadPath)
-			log.Debug(*downloadPath)
-			viper.Set("DOWNLOAD_PATH", *downloadPath)
-			*mediaPath = config.GetMediaPath(*mediaPath)
-			viper.Set("MEDIA_PATH", *mediaPath)
+			viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
+			mediaPath := config.GetMediaPath("")
+			if mediaPath == "" {
+				mediaPath = viper.GetString("DOWNLOAD_PATH")
+			}
+			viper.Set("MEDIA_PATH", mediaPath)
 
 			if err := viper.WriteConfig(); err != nil {
 				log.WithError(err).Error("failed to write config file")
@@ -76,12 +77,16 @@ func main() {
 	}
 
 	if viper.GetString("DOWNLOAD_PATH") == "" {
-		*downloadPath = config.GetDownloadPath(*downloadPath)
-		viper.Set("DOWNLOAD_PATH", *downloadPath)
+		viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
 	}
+
 	if viper.GetString("MEDIA_PATH") == "" {
-		*mediaPath = config.GetMediaPath(*mediaPath)
-		viper.Set("MEDIA_PATH", *mediaPath)
+		viper.Set("MEDIA_PATH", config.GetMediaPath(""))
+	}
+
+	// update the configuration file
+	if err := viper.WriteConfig(); err != nil {
+		log.WithError(err).Error("failed to write config file")
 	}
 
 	log.WithFields(log.Fields{

@@ -51,11 +51,6 @@ type Download struct {
 	Error          string
 }
 
-type Options struct {
-	DownloadPath string
-	MediaPath    string
-}
-
 var srv *server = &server{
 	searchUrlTemplate:   "https://members.easynews.com/2.0/search/solr-search/?fly=2&gps=%s&pby=100&pno=1&s1=dtime&s1d=-&s2=nrfile&s2d=-&s3=dsize&s3d=-&sS=0&d1t=&d2t=&b1t=&b2t=&px1t=&px2t=&fps1t=&fps2t=&bps1t=&bps2t=&hz1t=&hz2t=&rn1t=&rn2t=&fty[]=VIDEO&u=1&sc=1&st=adv&safeO=0&sb=1",
 	downloadUrlTemplate: "https://members.easynews.com/dl/auto/80/%s%s/%s%[2]s",
