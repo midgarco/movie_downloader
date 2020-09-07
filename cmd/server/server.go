@@ -9,12 +9,14 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/apex/log"
 	"github.com/cavaliercoder/grab"
+	"github.com/midgarco/movie_downloader/config"
 	"github.com/midgarco/movie_downloader/cookiejar"
 	"github.com/midgarco/movie_downloader/movie"
 	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
@@ -40,6 +42,8 @@ type server struct {
 	downloadCount      int32
 }
 
+type Options struct{}
+
 type Download struct {
 	index          int32
 	BytesPerSecond int32
@@ -57,6 +61,58 @@ var srv *server = &server{
 	activeDownloads:     map[int32]*Download{},
 	completedDownloads:  map[int32]*Download{},
 	downloadCount:       0,
+}
+
+// LoadConfig loads the configuration file into the server. If the files
+// doesn't exist, it will prompt the user for the necessary credentials
+// to create the file
+func (s *server) LoadConfig(opts *Options) error {
+
+	// load the configuration
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(path.Dir(*configFile))
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Config file not found so create one
+			if err := config.Create(*configFile); err != nil {
+				log.WithError(err).Error("failed to create config file")
+			}
+
+			// ask for the service credentials
+			username, password := config.GetCredentials()
+			viper.Set("USERNAME", username)
+			viper.Set("PASSWORD", password)
+
+			// ask for the download and media paths
+			viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
+			mediaPath := config.GetMediaPath("")
+			if mediaPath == "" {
+				mediaPath = viper.GetString("DOWNLOAD_PATH")
+			}
+			viper.Set("MEDIA_PATH", mediaPath)
+		} else {
+			log.WithError(err).Fatal("could not read in the config file")
+		}
+	}
+
+	if viper.GetString("DOWNLOAD_PATH") == "" {
+		viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
+	}
+
+	if viper.GetString("MEDIA_PATH") == "" {
+		viper.Set("MEDIA_PATH", config.GetMediaPath(""))
+	}
+
+	// update the configuration file
+	if err := viper.WriteConfig(); err != nil {
+		log.WithError(err).Error("failed to write config file")
+	}
+
+	s.downloadPath = viper.GetString("DOWNLOAD_PATH")
+	s.mediaPath = viper.GetString("MEDIA_PATH")
+
+	return nil
 }
 
 // Search ...

@@ -13,7 +13,6 @@ import (
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/midgarco/movie_downloader/config"
 	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -44,49 +43,8 @@ func main() {
 		"build":   Build,
 	})
 
-	// load the configuration
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(path.Dir(*configFile))
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// Config file not found so create one
-			if err := config.Create(*configFile); err != nil {
-				log.WithError(err).Error("failed to create config file")
-			}
-
-			// ask for the service credentials
-			username, password := config.GetCredentials()
-			viper.Set("USERNAME", username)
-			viper.Set("PASSWORD", password)
-
-			// ask for the download and media paths
-			viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
-			mediaPath := config.GetMediaPath("")
-			if mediaPath == "" {
-				mediaPath = viper.GetString("DOWNLOAD_PATH")
-			}
-			viper.Set("MEDIA_PATH", mediaPath)
-
-			if err := viper.WriteConfig(); err != nil {
-				log.WithError(err).Error("failed to write config file")
-			}
-		} else {
-			log.WithError(err).Fatal("could not read in the config file")
-		}
-	}
-
-	if viper.GetString("DOWNLOAD_PATH") == "" {
-		viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
-	}
-
-	if viper.GetString("MEDIA_PATH") == "" {
-		viper.Set("MEDIA_PATH", config.GetMediaPath(""))
-	}
-
-	// update the configuration file
-	if err := viper.WriteConfig(); err != nil {
-		log.WithError(err).Error("failed to write config file")
+	if err := srv.LoadConfig(&Options{}); err != nil {
+		log.WithError(err).Fatal("failed to load configuration")
 	}
 
 	log.WithFields(log.Fields{

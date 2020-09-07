@@ -86,3 +86,17 @@ func GetMediaPath(mediaPath string) string {
 
 	return input
 }
+
+func GetGRPCEndpoint(endpoint string) string {
+	reader := bufio.NewReader(os.Stdin)
+
+	fmt.Print("Server GRPC endpoint: ")
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		log.WithError(err).Error("could not read server endpoint")
+		return ""
+	}
+	input = strings.TrimSpace(input)
+
+	return input
+}

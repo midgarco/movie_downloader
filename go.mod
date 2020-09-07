@@ -6,6 +6,7 @@ require (
 	github.com/apex/log v1.7.0
 	github.com/cavaliercoder/grab v2.0.0+incompatible
 	github.com/dustin/go-humanize v1.0.0
+	github.com/go-delve/delve v1.5.0
 	github.com/golang/protobuf v1.4.2
 	github.com/grpc-ecosystem/grpc-gateway v1.14.8
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.0.0-beta.3
