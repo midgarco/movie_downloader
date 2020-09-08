@@ -148,7 +148,7 @@ func layout(g *gocui.Gui) error {
 				log.WithError(err).Fatal("error connecting to pmd service")
 				return
 			}
-			log.Info("connected to progress stream")
+			log.Infof("connected to progress stream %s", viper.GetString("GRPC_ENDPOINT"))
 			for {
 				res, err := stream.Recv()
 				if err == io.EOF {
