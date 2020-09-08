@@ -145,7 +145,7 @@ func layout(g *gocui.Gui) error {
 		go func() {
 			stream, err := client.Progress(context.Background(), &moviedownloader.ProgressRequest{})
 			if err != nil {
-				log.WithError(err).Error("error connecting to pmd service")
+				log.WithError(err).Fatal("error connecting to pmd service")
 				return
 			}
 			log.Info("connected to progress stream")
