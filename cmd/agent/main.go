@@ -54,14 +54,15 @@ func main() {
 
 			// ask for the server endpoint
 			viper.Set("GRPC_ENDPOINT", config.GetGRPCEndpoint(""))
-			*endpoint = viper.GetString("GRPC_ENDPOINT")
 		} else {
 			log.WithError(err).Fatal("could not read in the config file")
 		}
 	}
 
-	if viper.GetString("GRPC_ENDPOINT") == "" {
-		viper.Set("GRPC_ENDPOINT", config.GetGRPCEndpoint(""))
+	if *endpoint == "" {
+		if viper.GetString("GRPC_ENDPOINT") == "" {
+			viper.Set("GRPC_ENDPOINT", config.GetGRPCEndpoint(""))
+		}
 		*endpoint = viper.GetString("GRPC_ENDPOINT")
 	}
 
