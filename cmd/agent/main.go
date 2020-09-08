@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -10,23 +9,26 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/apex/log"
 	"github.com/apex/log/handlers/cli"
 	"github.com/dustin/go-humanize"
 	"github.com/jroimartin/gocui"
+	"github.com/midgarco/movie_downloader/config"
 	"github.com/midgarco/movie_downloader/log/gui"
 	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"
 )
 
 var (
-	port     = flag.String("p", "8080", "port to run the agent on")
-	endpoint = flag.String("endpoint", "", "pmd server connection")
+	port       = flag.String("p", "8080", "port to run the agent on")
+	endpoint   = flag.String("endpoint", "", "pmd server connection")
+	configFile = flag.String("config", os.Getenv("HOME")+"/.pmd/agent.yaml", "The path to the config.yaml file")
 
 	client moviedownloader.MovieDownloaderServiceClient
 )
@@ -39,15 +41,39 @@ func main() {
 	log.SetLevel(log.DebugLevel)
 	log.SetHandler(cli.New(os.Stdout))
 
-	if *endpoint == "" {
-		reader := bufio.NewReader(os.Stdin)
+	// load the configuration
+	viper.SetConfigName("agent")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(path.Dir(*configFile))
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Config file not found so create one
+			if err := config.Create(*configFile); err != nil {
+				log.WithError(err).Error("failed to create config file")
+			}
 
-		fmt.Print("Server GRPC endpoint: ")
-		str, err := reader.ReadString('\n')
-		if err != nil {
-			log.WithError(err).Fatal("could not read server endpoint")
+			// ask for the server endpoint
+			viper.Set("GRPC_ENDPOINT", config.GetGRPCEndpoint(""))
+			*endpoint = viper.GetString("GRPC_ENDPOINT")
+		} else {
+			log.WithError(err).Fatal("could not read in the config file")
 		}
-		*endpoint = strings.TrimSpace(str)
+	}
+
+	if viper.GetString("GRPC_ENDPOINT") == "" {
+		viper.Set("GRPC_ENDPOINT", config.GetGRPCEndpoint(""))
+		*endpoint = viper.GetString("GRPC_ENDPOINT")
+	}
+
+	if *endpoint == "" {
+		log.Fatal("no GRPC endpoint configured")
+	}
+
+	viper.Set("GRPC_ENDPOINT", *endpoint)
+
+	// update the configuration file
+	if err := viper.WriteConfig(); err != nil {
+		log.WithError(err).Error("failed to write config file")
 	}
 
 	var opts []grpc.DialOption

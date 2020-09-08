@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"flag"
-	"fmt"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -16,6 +14,7 @@ import (
 	"github.com/apex/log/handlers/cli"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -24,11 +23,11 @@ var (
 	Version = "unset"
 	Build   = "unset"
 
-	configFile   = flag.String("config", os.Getenv("HOME")+"/.pmd/config.yaml", "The path to the config.yaml file")
-	port         = flag.String("p", "4050", "The server REST port")
-	grpcPort     = flag.String("grpc", "4051", "The server GRPC port")
-	downloadPath = flag.String("d", os.Getenv("HOME")+"/Movies/", "The directory to save downloads")
-	mediaPath    = flag.String("media", "", "Path to where the media will be moved once completed")
+	configFile = flag.String("config", os.Getenv("HOME")+"/.pmd/config.yaml", "The path to the config.yaml file")
+	port       = flag.String("p", "4050", "The server REST port")
+	grpcPort   = flag.String("grpc", "4051", "The server GRPC port")
+	// downloadPath = flag.String("d", "", "The directory to save downloads")
+	// mediaPath    = flag.String("media", "", "Path to where the media will be moved once completed")
 )
 
 func init() {
@@ -44,44 +43,15 @@ func main() {
 		"build":   Build,
 	})
 
-	if *downloadPath == "" {
-		reader := bufio.NewReader(os.Stdin)
-
-		fmt.Print("Download path: ")
-		str, err := reader.ReadString('\n')
-		if err != nil {
-			log.WithError(err).Fatal("could not read download path")
-		}
-		*downloadPath = strings.TrimSpace(str)
-	}
-	if *mediaPath == "" {
-		reader := bufio.NewReader(os.Stdin)
-
-		fmt.Print("Media path: ")
-		str, err := reader.ReadString('\n')
-		if err != nil {
-			log.WithError(err).Fatal("could not read media path")
-		}
-		*mediaPath = strings.TrimSpace(str)
-	}
-
-	opts := &Options{
-		DownloadPath: *downloadPath,
-		MediaPath:    *mediaPath,
-	}
-
-	log.WithField("filename", *configFile).Info("loading config file")
-	if err := srv.LoadConfig(*configFile, opts); err != nil {
-		log.WithFields(log.Fields{
-			"filename": *configFile,
-		}).WithError(err).Fatal("failed loading config file")
+	if err := srv.LoadConfig(&Options{}); err != nil {
+		log.WithError(err).Fatal("failed to load configuration")
 	}
 
 	log.WithFields(log.Fields{
 		"rest_port":     *port,
 		"grpc_port":     *grpcPort,
-		"download_path": *downloadPath,
-		"media_path":    *mediaPath,
+		"download_path": viper.GetString("DOWNLOAD_PATH"),
+		"media_path":    viper.GetString("MEDIA_PATH"),
 	}).Info("successfully loaded configuration")
 
 	// start the REST proxy endpoints

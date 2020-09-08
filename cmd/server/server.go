@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"sync"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/midgarco/movie_downloader/movie"
 	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
 	"github.com/midgarco/movie_downloader/search"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -33,13 +35,14 @@ type server struct {
 	mediaPath           string
 	searchUrlTemplate   string
 	downloadUrlTemplate string
-	cfg                 *config.Configuration
 
 	mu                 sync.Mutex
 	activeDownloads    map[int32]*Download
 	completedDownloads map[int32]*Download
 	downloadCount      int32
 }
+
+type Options struct{}
 
 type Download struct {
 	index          int32
@@ -50,11 +53,6 @@ type Download struct {
 	Filename       string
 	Details        *movie.Movie
 	Error          string
-}
-
-type Options struct {
-	DownloadPath string
-	MediaPath    string
 }
 
 var srv *server = &server{
@@ -68,15 +66,51 @@ var srv *server = &server{
 // LoadConfig loads the configuration file into the server. If the files
 // doesn't exist, it will prompt the user for the necessary credentials
 // to create the file
-func (s *server) LoadConfig(filename string, opts *Options) error {
-	cfg, err := config.LoadConfig(filename)
-	if err != nil {
-		return err
+func (s *server) LoadConfig(opts *Options) error {
+
+	// load the configuration
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(path.Dir(*configFile))
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Config file not found so create one
+			if err := config.Create(*configFile); err != nil {
+				log.WithError(err).Error("failed to create config file")
+			}
+
+			// ask for the service credentials
+			username, password := config.GetCredentials()
+			viper.Set("USERNAME", username)
+			viper.Set("PASSWORD", password)
+
+			// ask for the download and media paths
+			viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
+			mediaPath := config.GetMediaPath("")
+			if mediaPath == "" {
+				mediaPath = viper.GetString("DOWNLOAD_PATH")
+			}
+			viper.Set("MEDIA_PATH", mediaPath)
+		} else {
+			log.WithError(err).Fatal("could not read in the config file")
+		}
 	}
 
-	s.cfg = cfg
-	s.downloadPath = opts.DownloadPath
-	s.mediaPath = opts.MediaPath
+	if viper.GetString("DOWNLOAD_PATH") == "" {
+		viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
+	}
+
+	if viper.GetString("MEDIA_PATH") == "" {
+		viper.Set("MEDIA_PATH", config.GetMediaPath(""))
+	}
+
+	// update the configuration file
+	if err := viper.WriteConfig(); err != nil {
+		log.WithError(err).Error("failed to write config file")
+	}
+
+	s.downloadPath = viper.GetString("DOWNLOAD_PATH")
+	s.mediaPath = viper.GetString("MEDIA_PATH")
 
 	return nil
 }
@@ -118,7 +152,7 @@ func (s *server) Search(ctx context.Context, req *moviedownloader.SearchRequest)
 	}
 
 	// set the basic auth
-	request.SetBasicAuth(s.cfg.Username, s.cfg.Password)
+	request.SetBasicAuth(viper.GetString("USERNAME"), viper.GetString("PASSWORD"))
 
 	// save the authentication cookie
 	cookies := &cookiejar.CookieJar{}
@@ -172,7 +206,7 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 		return nil, errors.New("failed grab request")
 	}
 
-	request.HTTPRequest.SetBasicAuth(s.cfg.Username, s.cfg.Password)
+	request.HTTPRequest.SetBasicAuth(viper.GetString("USERNAME"), viper.GetString("PASSWORD"))
 	request.Filename = filepath.Join(s.downloadPath, mv.Filename+mv.Extension)
 
 	// setup the net transport for tls
