@@ -160,6 +160,10 @@ func layout(g *gocui.Gui) error {
 				}
 				v.Clear()
 
+				if res == nil || res.ActiveDownloads == nil {
+					continue
+				}
+
 				keys := make([]int, 0, len(res.ActiveDownloads))
 				for k := range res.ActiveDownloads {
 					keys = append(keys, int(k))
