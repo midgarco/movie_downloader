@@ -88,7 +88,7 @@ func main() {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"endpoint": *endpoint,
-		}).WithError(err).Error("failed to connect to the cap service client")
+		}).WithError(err).Fatal("failed to connect to the cap service client")
 	}
 	client = moviedownloader.NewMovieDownloaderServiceClient(conn)
 	defer conn.Close()
