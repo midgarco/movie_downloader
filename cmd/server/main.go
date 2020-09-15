@@ -23,11 +23,11 @@ var (
 	Version = "unset"
 	Build   = "unset"
 
-	configFile = flag.String("config", os.Getenv("HOME")+"/.pmd/config.yaml", "The path to the config.yaml file")
-	port       = flag.String("p", "4050", "The server REST port")
-	grpcPort   = flag.String("grpc", "4051", "The server GRPC port")
-	// downloadPath = flag.String("d", "", "The directory to save downloads")
-	// mediaPath    = flag.String("media", "", "Path to where the media will be moved once completed")
+	configFile   = flag.String("config", os.Getenv("HOME")+"/.pmd/config.yaml", "The path to the config.yaml file")
+	port         = flag.String("p", "4050", "The server REST port")
+	grpcPort     = flag.String("grpc", "4051", "The server GRPC port")
+	downloadPath = flag.String("d", "", "The directory to save downloads")
+	mediaPath    = flag.String("media", "", "Path to where the media will be moved once completed")
 )
 
 func init() {

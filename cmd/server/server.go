@@ -96,13 +96,22 @@ func (s *server) LoadConfig(opts *Options) error {
 		}
 	}
 
-	if viper.GetString("DOWNLOAD_PATH") == "" {
-		viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
+	if *downloadPath == "" {
+		if viper.GetString("DOWNLOAD_PATH") == "" {
+			viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
+		}
+		*downloadPath = viper.GetString("DOWNLOAD_PATH")
 	}
 
-	if viper.GetString("MEDIA_PATH") == "" {
-		viper.Set("MEDIA_PATH", config.GetMediaPath(""))
+	if *mediaPath == "" {
+		if viper.GetString("MEDIA_PATH") == "" {
+			viper.Set("MEDIA_PATH", config.GetMediaPath(""))
+		}
+		*downloadPath = viper.GetString("MEDIA_PATH")
 	}
+
+	viper.Set("DOWNLOAD_PATH", *downloadPath)
+	viper.Set("MEDIA_PATH", *mediaPath)
 
 	// update the configuration file
 	if err := viper.WriteConfig(); err != nil {
@@ -362,6 +371,8 @@ func (s *server) Completed(ctx context.Context, req *moviedownloader.CompletedRe
 			s.mu.Lock()
 			delete(s.completedDownloads, req.CompletedId)
 			s.mu.Unlock()
+		} else {
+			log.Warn("could not find completed download")
 		}
 	}
 

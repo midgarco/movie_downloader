@@ -157,10 +157,12 @@ func layout(g *gocui.Gui) error {
 				}
 				if err != nil {
 					log.WithError(err).Error("failure receiving progress updates")
+					continue
 				}
 				v.Clear()
 
-				if res == nil || res.ActiveDownloads == nil {
+				if res == nil {
+					log.WithField("result", fmt.Sprintf("%#v", res)).Warn("nil")
 					continue
 				}
 
