@@ -38,6 +38,7 @@
 
 <script>
 import prettyBytes from "pretty-bytes";
+import * as Wails from '@wailsapp/runtime';
 
 export default {
   name: "ActiveDownloads",
@@ -54,19 +55,14 @@ export default {
       return prettyBytes(value);
     },
   },
-  created: function () {
-    setInterval(() => {
-      this.progress();
-    }, 1000);
+  mounted() {
+    Wails.Events.On("progress", (downloads) => {
+        this.downloads = downloads
+    })
   },
   methods: {
-    progress: function () {
-      window.backend.progress().then((resp) => {
-        this.downloads = resp;
-      });
-    },
     completeDownload: function (value) {
-      window.backend.complete(parseInt(value)).then(() => {});
+      window.backend.Agent.Complete(parseInt(value)).then(() => {});
     },
   },
 };

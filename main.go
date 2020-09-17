@@ -4,14 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
 	"os"
 	"path"
 	"time"
 
 	"github.com/apex/log"
-	"github.com/apex/log/handlers/cli"
 	"github.com/leaanthony/mewn"
 	"github.com/midgarco/movie_downloader/config"
 	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
@@ -24,17 +22,52 @@ import (
 var (
 	endpoint   = flag.String("endpoint", "", "pmd server connection")
 	configFile = flag.String("config", os.Getenv("HOME")+"/.pmd/agent.yaml", "The path to the config.yaml file")
-
-	client moviedownloader.MovieDownloaderServiceClient
-
-	downloads = make(map[int32]*moviedownloader.Progress)
 )
 
 func init() {
 	flag.Parse()
+}
 
-	log.SetLevel(log.DebugLevel)
-	log.SetHandler(cli.New(os.Stdout))
+func main() {
+
+	js := mewn.String("./frontend/dist/app.js")
+	css := mewn.String("./frontend/dist/app.css")
+
+	agent, err := NewAgent()
+	if err != nil {
+		agent.log.Fatalf("Failed to start Agent: %v", err)
+	}
+
+	app := wails.CreateApp(&wails.AppConfig{
+		Width:     1024,
+		Height:    768,
+		Title:     "PMD Agent",
+		JS:        js,
+		CSS:       css,
+		Colour:    "#FFFFFF",
+		Resizable: true,
+	})
+	app.Bind(agent)
+	app.Run()
+}
+
+type Agent struct {
+	endpoint  string
+	runtime   *wails.Runtime
+	log       *wails.CustomLogger
+	conn      *grpc.ClientConn
+	downloads map[int32]*moviedownloader.Progress
+}
+
+func NewAgent() (*Agent, error) {
+	agent := &Agent{}
+	return agent, nil
+}
+
+func (a *Agent) WailsInit(runtime *wails.Runtime) error {
+	// connect the wails runtime
+	a.runtime = runtime
+	a.log = runtime.Log.New("Agent")
 
 	// load the configuration
 	viper.SetConfigName("agent")
@@ -44,13 +77,13 @@ func init() {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Config file not found so create one
 			if err := config.Create(*configFile); err != nil {
-				log.WithError(err).Error("failed to create config file")
+				a.log.Errorf("Failed to create config file: %v", err)
 			}
 
 			// ask for the server endpoint
 			viper.Set("GRPC_ENDPOINT", config.GetGRPCEndpoint(""))
 		} else {
-			log.WithError(err).Fatal("could not read in the config file")
+			a.log.Fatalf("Could not read in the config file: %v", err)
 		}
 	}
 
@@ -62,19 +95,28 @@ func init() {
 	}
 
 	if *endpoint == "" {
-		log.Fatal("no GRPC endpoint configured")
+		a.log.Fatal("No GRPC endpoint configured")
 	}
 
 	viper.Set("GRPC_ENDPOINT", *endpoint)
 
 	// update the configuration file
 	if err := viper.WriteConfig(); err != nil {
-		log.WithError(err).Error("failed to write config file")
+		a.log.Errorf("Failed to write config file: %v", err)
 	}
+
+	// set the endpoint
+	a.endpoint = viper.GetString("GRPC_ENDPOINT")
+
+	// build out the GRPC connection
+	if err := a.createConnection(); err != nil {
+		return err
+	}
+
+	return a.Progress()
 }
 
-func main() {
-
+func (a *Agent) createConnection() error {
 	var opts []grpc.DialOption
 	var kacp = keepalive.ClientParameters{
 		Time: time.Duration(10) * time.Second,
@@ -82,63 +124,18 @@ func main() {
 		// PermitWithoutStream: true,
 	}
 	opts = append(opts, grpc.WithInsecure(), grpc.WithKeepaliveParams(kacp))
-	conn, err := grpc.Dial(*endpoint, opts...)
+	conn, err := grpc.Dial(a.endpoint, opts...)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"endpoint": *endpoint,
-		}).WithError(err).Fatal("failed to connect to the cap service client")
+		a.log.Error(err.Error())
+		return err
 	}
-	client = moviedownloader.NewMovieDownloaderServiceClient(conn)
-	defer conn.Close()
-
-	// display download content
-	go func() {
-		stream, err := client.Progress(context.Background(), &moviedownloader.ProgressRequest{})
-		if err != nil {
-			log.WithError(err).Fatal("error connecting to pmd service")
-			return
-		}
-		log.Infof("connected to progress stream %s", viper.GetString("GRPC_ENDPOINT"))
-		for {
-			res, err := stream.Recv()
-			if err == io.EOF {
-				log.Warn("server connection lost")
-				break
-			}
-			if err != nil {
-				log.WithError(err).Error("failure receiving progress updates")
-				continue
-			}
-
-			if res == nil {
-				log.WithField("result", fmt.Sprintf("%#v", res)).Warn("nil")
-				continue
-			}
-
-			downloads = res.ActiveDownloads
-		}
-	}()
-
-	js := mewn.String("./frontend/dist/app.js")
-	css := mewn.String("./frontend/dist/app.css")
-
-	app := wails.CreateApp(&wails.AppConfig{
-		Width:     1024,
-		Height:    768,
-		Title:     "PMD Agent",
-		JS:        js,
-		CSS:       css,
-		Colour:    "#FFFFFF",
-		Resizable: true,
-	})
-	app.Bind(search)
-	app.Bind(download)
-	app.Bind(progress)
-	app.Bind(complete)
-	app.Run()
+	a.conn = conn
+	return nil
 }
 
-func search(query string) (*moviedownloader.SearchResponse, error) {
+func (a *Agent) Search(query string) (*moviedownloader.SearchResponse, error) {
+	client := moviedownloader.NewMovieDownloaderServiceClient(a.conn)
+
 	req := &moviedownloader.SearchRequest{Query: query}
 	results, err := client.Search(context.Background(), req)
 	if err != nil {
@@ -147,11 +144,13 @@ func search(query string) (*moviedownloader.SearchResponse, error) {
 	return results, nil
 }
 
-func download(selected string) error {
+func (a *Agent) Download(selected string) error {
 	movie := &moviedownloader.Movie{}
 	if err := json.Unmarshal([]byte(selected), movie); err != nil {
 		return err
 	}
+
+	client := moviedownloader.NewMovieDownloaderServiceClient(a.conn)
 
 	req := &moviedownloader.DownloadRequest{Movie: movie}
 	_, err := client.Download(context.Background(), req)
@@ -162,11 +161,45 @@ func download(selected string) error {
 	return nil
 }
 
-func progress() map[int32]*moviedownloader.Progress {
-	return downloads
+func (a *Agent) Progress() error {
+	a.log.Info("Start monitor active downloads")
+
+	client := moviedownloader.NewMovieDownloaderServiceClient(a.conn)
+
+	// display download content
+	go func(client moviedownloader.MovieDownloaderServiceClient) {
+		stream, err := client.Progress(context.Background(), &moviedownloader.ProgressRequest{})
+		if err != nil {
+			a.log.Fatalf("Error connecting to pmd service: %v", err)
+			return
+		}
+		log.Infof("Connected to progress stream %s", viper.GetString("GRPC_ENDPOINT"))
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				a.log.Warn("Server connection lost")
+				break
+			}
+			if err != nil {
+				a.log.Errorf("Failure receiving progress updates: %v", err)
+				continue
+			}
+
+			if res == nil {
+				continue
+			}
+
+			a.downloads = res.ActiveDownloads
+			a.runtime.Events.Emit("progress", a.downloads)
+		}
+	}(client)
+
+	return nil
 }
 
-func complete(id int32) error {
+func (a *Agent) Complete(id int32) error {
+	client := moviedownloader.NewMovieDownloaderServiceClient(a.conn)
+
 	req := &moviedownloader.CompletedRequest{CompletedId: id}
 	_, err := client.Completed(context.Background(), req)
 	if err != nil {

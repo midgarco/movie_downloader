@@ -81,13 +81,13 @@ export default {
         return;
       }
 
-      window.backend.search(value).then((resp) => {
+      window.backend.Agent.Search(value).then((resp) => {
         this.results = resp.results.movies;
         this.loading = false;
       });
     },
     downloadMovie: function (movie) {
-      window.backend.download(JSON.stringify(movie)).then(() => {
+      window.backend.Agent.Download(JSON.stringify(movie)).then(() => {
         console.log("done");
       });
     },
