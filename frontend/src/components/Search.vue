@@ -7,7 +7,7 @@
           <div class="form-group mr-sm-3 mb-2">
             <input type="text" class="form-control" v-model="query" value @keyup.enter="queryMovie" />
           </div>
-          <button type="submit" class="btn btn-primary mb-2" @click="queryMovie">Search</button>
+          <button class="btn btn-primary mb-2" @click="queryMovie">Search</button>
         </div>
       </div>
     </div>

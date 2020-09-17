@@ -8,3 +8,5 @@ agent/agent
 bin
 build
 node_modules
+
+PMDAgent.dmg

@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	endpoint   = flag.String("endpoint", "", "pmd server connection")
+	endpoint   = flag.String("endpoint", "", "PMD server connection")
 	configFile = flag.String("config", os.Getenv("HOME")+"/.pmd/agent.yaml", "The path to the config.yaml file")
 )
 
@@ -79,30 +79,41 @@ func (a *Agent) WailsInit(runtime *wails.Runtime) error {
 			if err := config.Create(*configFile); err != nil {
 				a.log.Errorf("Failed to create config file: %v", err)
 			}
-
-			// ask for the server endpoint
-			viper.Set("GRPC_ENDPOINT", config.GetGRPCEndpoint(""))
 		} else {
 			a.log.Fatalf("Could not read in the config file: %v", err)
 		}
 	}
 
-	if *endpoint == "" {
-		if viper.GetString("GRPC_ENDPOINT") == "" {
-			viper.Set("GRPC_ENDPOINT", config.GetGRPCEndpoint(""))
-		}
-		*endpoint = viper.GetString("GRPC_ENDPOINT")
-	}
-
-	if *endpoint == "" {
-		a.log.Fatal("No GRPC endpoint configured")
-	}
-
-	viper.Set("GRPC_ENDPOINT", *endpoint)
+	viper.Set("GRPC_ENDPOINT", "")
 
 	// update the configuration file
 	if err := viper.WriteConfig(); err != nil {
 		a.log.Errorf("Failed to write config file: %v", err)
+	}
+
+	// set the endpoint
+	a.endpoint = viper.GetString("GRPC_ENDPOINT")
+
+	// build out the GRPC connection
+	if err := a.createConnection(); err != nil {
+		return err
+	}
+
+	return a.Progress()
+}
+
+func (a *Agent) GetEndpoint() string {
+	return viper.GetString("GRPC_ENDPOINT")
+}
+
+func (a *Agent) SaveEndpoint(endpoint string) error {
+
+	viper.Set("GRPC_ENDPOINT", endpoint)
+
+	// update the configuration file
+	if err := viper.WriteConfig(); err != nil {
+		a.log.Errorf("Failed to write config file: %v", err)
+		return err
 	}
 
 	// set the endpoint
@@ -170,7 +181,7 @@ func (a *Agent) Progress() error {
 	go func(client moviedownloader.MovieDownloaderServiceClient) {
 		stream, err := client.Progress(context.Background(), &moviedownloader.ProgressRequest{})
 		if err != nil {
-			a.log.Fatalf("Error connecting to pmd service: %v", err)
+			a.log.Errorf("Error connecting to pmd service: %v", err)
 			return
 		}
 		log.Infof("Connected to progress stream %s", viper.GetString("GRPC_ENDPOINT"))
