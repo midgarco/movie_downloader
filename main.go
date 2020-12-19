@@ -20,7 +20,6 @@ import (
 )
 
 var (
-	endpoint   = flag.String("endpoint", "", "PMD server connection")
 	configFile = flag.String("config", os.Getenv("HOME")+"/.pmd/agent.yaml", "The path to the config.yaml file")
 )
 
@@ -83,8 +82,6 @@ func (a *Agent) WailsInit(runtime *wails.Runtime) error {
 			a.log.Fatalf("Could not read in the config file: %v", err)
 		}
 	}
-
-	viper.Set("GRPC_ENDPOINT", "")
 
 	// update the configuration file
 	if err := viper.WriteConfig(); err != nil {

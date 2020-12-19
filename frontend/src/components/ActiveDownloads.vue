@@ -20,9 +20,10 @@
             <td colspan="2" class="pt-0">
               <div class="progress" style="height: 2px;">
                 <div
-                  class="progress-bar bg-success progress-bar-striped progress-bar-animated"
+                  class="progress-bar progress-bar-striped progress-bar-animated"
                   role="progressbar"
                   v-bind:style="{ width: item.progress + '%' }"
+                  v-bind:class="{ 'bg-info': item.progress < 100, 'bg-success': item.progress == 100 }"
                   :aria-valuenow="item.progress"
                   aria-valuemin="0"
                   aria-valuemax="100"

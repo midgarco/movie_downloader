@@ -86,11 +86,7 @@ func (s *server) LoadConfig(opts *Options) error {
 
 			// ask for the download and media paths
 			viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
-			mediaPath := config.GetMediaPath("")
-			if mediaPath == "" {
-				mediaPath = viper.GetString("DOWNLOAD_PATH")
-			}
-			viper.Set("MEDIA_PATH", mediaPath)
+			viper.Set("MEDIA_PATH", config.GetMediaPath(viper.GetString("DOWNLOAD_PATH")))
 		} else {
 			log.WithError(err).Fatal("could not read in the config file")
 		}
@@ -107,7 +103,7 @@ func (s *server) LoadConfig(opts *Options) error {
 		if viper.GetString("MEDIA_PATH") == "" {
 			viper.Set("MEDIA_PATH", config.GetMediaPath(""))
 		}
-		*downloadPath = viper.GetString("MEDIA_PATH")
+		*mediaPath = viper.GetString("MEDIA_PATH")
 	}
 
 	viper.Set("DOWNLOAD_PATH", *downloadPath)

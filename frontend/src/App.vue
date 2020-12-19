@@ -34,7 +34,8 @@
 
     <div class="row">
       <Search />
-
+    </div>
+    <div class="row">
       <Log />
     </div>
   </div>
@@ -73,7 +74,6 @@ export default {
   },
   methods: {
     showConfig: function (show) {
-      console.log(show);
       this.showConfigWindow = show;
     },
     saveConfig: function () {

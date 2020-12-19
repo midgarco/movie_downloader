@@ -5,6 +5,9 @@ import App from './App.vue'
 
 Vue.config.productionTip = false
 Vue.config.devtools = true
+Vue.config.errorHandler = function(err, vm, info) {
+  console.log(`Error: ${err.toString()}\nInfo: ${info}`);
+}
 
 import * as Wails from '@wailsapp/runtime'
 

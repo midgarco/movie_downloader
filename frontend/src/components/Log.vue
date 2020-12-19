@@ -1,5 +1,5 @@
 <template>
-  <div class="col-md-4">
+  <div class="col-md-12">
     <div class="row no-gutters flex-md-row position-relative" v-if="logging">
       <div class="col d-flex flex-column position-static">
         <h3 class="mb-0">Log</h3>

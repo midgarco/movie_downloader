@@ -1,5 +1,5 @@
 <template>
-  <div class="col-md-8">
+  <div class="col-md-12">
     <div class="row no-gutters flex-md-row mb-4 position-relative">
       <div class="col d-flex flex-column position-static">
         <h3 class="mb-0">Movie</h3>
@@ -17,6 +17,10 @@
         <span class="sr-only">Loading...</span>
       </div>
     </div>
+
+    <div class="alert alert-danger" role="alert" v-if="hasError">
+      {{ error }}
+    </div>    
 
     <div class="row no-gutters overflow-auto" style="max-height: 430px" v-show="results.length">
       <div class="list-group mb-2 w-100">
@@ -43,7 +47,7 @@
             <tbody class="font-weight-light">
               <tr>
                 <td>{{ result.size }}</td>
-                <td>{{ result.resolution }}</td>
+                <td>{{ result.full_resolution }}</td>
                 <td>{{ result.runtime }}</td>
                 <td>{{ result.codec }}</td>
                 <td>
@@ -68,10 +72,13 @@ export default {
       loading: false,
       query: "",
       results: [],
+      hasError: false,
+      error: {},
     };
   },
   methods: {
     queryMovie: function () {
+      this.hasError = false
       this.loading = true;
       this.results = [];
 
@@ -82,8 +89,18 @@ export default {
       }
 
       window.backend.Agent.Search(value).then((resp) => {
-        this.results = resp.results.movies;
         this.loading = false;
+        if (!resp.results.movies) {
+          this.hasError = true
+          this.error = "no results"
+          return;
+        }
+        this.results = resp.results.movies;
+      }, err => {
+        console.log(err)
+        this.loading = false
+        this.hasError = true
+        this.error = err
       });
     },
     downloadMovie: function (movie) {
