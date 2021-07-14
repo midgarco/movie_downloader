@@ -28,7 +28,9 @@ pb:
 	@protoc -I/usr/local/include -I. \
 		-I${GOPATH}/src \
 		-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
-		--go_out=plugins=grpc:. \
+		--go_out=. \
+		--go-grpc_out=. \
+		--go-grpc_opt require_unimplemented_servers=false \
 		rpc/service.proto
 	@protoc -I/usr/local/include -I. \
 		-I${GOPATH}/src \
