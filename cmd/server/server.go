@@ -45,11 +45,12 @@ type server struct {
 type Options struct{}
 
 type Download struct {
-	index          int32
-	BytesPerSecond int32
-	BytesCompleted int32
-	Size           int32
-	Progress       int32
+	index int32
+
+	BytesPerSecond int64
+	BytesCompleted int64
+	Size           int64
+	Progress       int64
 	Filename       string
 	Details        *movie.Movie
 	Error          string
@@ -248,10 +249,10 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 
 		// print progress until transfer is complete
 		for !resp.IsComplete() {
-			stats.BytesCompleted = int32(resp.BytesComplete())
-			stats.BytesPerSecond = int32(resp.BytesPerSecond())
-			stats.Size = int32(resp.Size)
-			stats.Progress = int32(100 * resp.Progress())
+			stats.BytesCompleted = int64(resp.BytesComplete())
+			stats.BytesPerSecond = int64(resp.BytesPerSecond())
+			stats.Size = int64(resp.Size)
+			stats.Progress = int64(100 * resp.Progress())
 
 			time.Sleep(200 * time.Millisecond)
 		}
