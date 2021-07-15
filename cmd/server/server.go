@@ -205,6 +205,7 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 	}
 
 	uri := fmt.Sprintf(s.downloadUrlTemplate, mv.ID, mv.Extension, mv.Filename)
+	log.Debug(uri)
 
 	request, err := grab.NewRequest(".", uri)
 	if err != nil {
@@ -247,6 +248,13 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 
 		log.Info("downloading: " + mv.Filename + mv.Extension)
 
+		// check for errors
+		if resp.Err() != nil {
+			log.WithError(resp.Err()).Error("download failed")
+			stats.Error = resp.Err().Error()
+			return
+		}
+
 		// print progress until transfer is complete
 		for !resp.IsComplete() {
 			stats.BytesCompleted = int64(resp.BytesComplete())
@@ -259,13 +267,6 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 		if resp.IsComplete() {
 			stats.Progress = 100
 			stats.BytesCompleted = stats.Size
-		}
-
-		// check for errors
-		if resp.Err() != nil {
-			log.WithError(resp.Err()).Error("download failed")
-			stats.Error = resp.Err().Error()
-			return
 		}
 
 		log.Info("successfully downloaded: " + resp.Filename)
