@@ -30,21 +30,32 @@ func Create(filename string) error {
 func GetCredentials() (string, string) {
 	reader := bufio.NewReader(os.Stdin)
 
-	fmt.Print("Enter Username: ")
-	username, err := reader.ReadString('\n')
-	if err != nil {
-		log.WithError(err).Error("could not read username")
-		return "", ""
+	var username string
+	if v, ok := os.LookupEnv("PMD_USERNAME"); !ok {
+		fmt.Print("Enter Username: ")
+		in, err := reader.ReadString('\n')
+		if err != nil {
+			log.WithError(err).Error("could not read username")
+			return "", ""
+		}
+		username = in
+	} else {
+		username = v
 	}
 
-	fmt.Print("Enter Password: ")
-	bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
-	fmt.Print("\n")
-	if err != nil {
-		log.WithError(err).Error("could not read password")
-		return "", ""
+	var password string
+	if v, ok := os.LookupEnv("PMD_PASSWORD"); !ok {
+		fmt.Print("Enter Password: ")
+		bytePassword, err := terminal.ReadPassword(int(syscall.Stdin))
+		fmt.Print("\n")
+		if err != nil {
+			log.WithError(err).Error("could not read password")
+			return "", ""
+		}
+		password = string(bytePassword)
+	} else {
+		password = v
 	}
-	password := string(bytePassword)
 
 	return strings.TrimSpace(username), strings.TrimSpace(password)
 }
