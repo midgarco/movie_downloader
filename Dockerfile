@@ -9,12 +9,14 @@ WORKDIR /src
 COPY . /src
 
 ARG PRIVATE_ID_KEY
-RUN echo "${PRIVATE_ID_KEY}" | head -c 42
-RUN echo "${PRIVATE_ID_KEY}" | tail -c 42
 RUN date && echo "${PRIVATE_ID_KEY}" > /root/.ssh/id_rsa && chmod 400 /root/.ssh/id_rsa && touch /root/.ssh/known_hosts && ssh-keyscan github.com >> /root/.ssh/known_hosts
 RUN go clean -modcache
 RUN rm -f pmd-server
-RUN go build -o pmd-server -v ./cmd/server
+
+ARG VERSION
+ARG BUILD
+RUN echo "Building version: ${VERSION}/${BUILD}"
+RUN go build -ldflags "-X=main.Version=${VERSION} -X=main.Build=${BUILD}" -o pmd-server -v ./cmd/server
 
 RUN rm /root/.ssh/id_rsa 
 

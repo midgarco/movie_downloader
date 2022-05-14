@@ -2,3 +2,13 @@ This is a Go project that I am working on just to write something in Go. The sys
 
 *Still to do*
 Implement a client ui library to easily make calls and see search results.
+
+```
+docker build -t pmd-server:dev \
+    --build-arg PRIVATE_ID_KEY="`cat ~/.ssh/id_rsa`"\
+    --build-arg VERSION="`git describe --abbrev=0 --tags | sed 's/v//g'`" \
+    --build-arg BUILD="`git rev-parse --short HEAD`" \
+    .
+
+docker save pmd-server:dev | gzip > pmd-server.tar.gz
+```

@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/apex/log/handlers/cli"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
 	"github.com/spf13/viper"
@@ -36,7 +35,7 @@ func init() {
 
 func main() {
 	log.SetLevel(log.DebugLevel)
-	log.SetHandler(cli.New(os.Stdout))
+	// log.SetHandler(cli.New(os.Stdout))
 
 	log.Log = log.WithFields(log.Fields{
 		"version": Version,

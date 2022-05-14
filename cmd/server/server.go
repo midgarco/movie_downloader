@@ -75,6 +75,8 @@ func (s *server) LoadConfig(opts *Options) error {
 	viper.AddConfigPath(path.Dir(*configFile))
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			log.Info("creating config.yaml")
+
 			// Config file not found so create one
 			if err := config.Create(*configFile); err != nil {
 				log.WithError(err).Error("failed to create config file")
@@ -86,8 +88,8 @@ func (s *server) LoadConfig(opts *Options) error {
 			viper.Set("PASSWORD", password)
 
 			// ask for the download and media paths
-			viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
-			viper.Set("MEDIA_PATH", config.GetMediaPath(viper.GetString("DOWNLOAD_PATH")))
+			viper.Set("DOWNLOAD_PATH", *downloadPath)
+			viper.Set("MEDIA_PATH", *mediaPath)
 		} else {
 			log.WithError(err).Fatal("could not read in the config file")
 		}
@@ -98,6 +100,7 @@ func (s *server) LoadConfig(opts *Options) error {
 			viper.Set("DOWNLOAD_PATH", config.GetDownloadPath(""))
 		}
 		*downloadPath = viper.GetString("DOWNLOAD_PATH")
+		viper.Set("DOWNLOAD_PATH", *downloadPath)
 	}
 
 	if *mediaPath == "" {
@@ -105,10 +108,8 @@ func (s *server) LoadConfig(opts *Options) error {
 			viper.Set("MEDIA_PATH", config.GetMediaPath(""))
 		}
 		*mediaPath = viper.GetString("MEDIA_PATH")
+		viper.Set("MEDIA_PATH", *mediaPath)
 	}
-
-	viper.Set("DOWNLOAD_PATH", *downloadPath)
-	viper.Set("MEDIA_PATH", *mediaPath)
 
 	// update the configuration file
 	if err := viper.WriteConfig(); err != nil {
