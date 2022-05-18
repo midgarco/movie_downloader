@@ -3,53 +3,16 @@
   "author": "Jeff Dupont<jeff.dupont@gmail.com>",
   "private": true,
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@wailsapp/runtime": "^1.0.10",
-    "core-js": "^3.6.4",
-    "open-iconic": "^1.1.1",
-    "pretty-bytes": "^5.4.1",
-    "regenerator-runtime": "^0.13.3",
-    "sass": "^1.26.10",
-    "sass-loader": "^10.0.2",
-    "vue": "^2.6.11"
+    "pretty-bytes": "^6.0.0",
+    "vue": "^3.2.25"
   },
   "devDependencies": {
-    "@vue/cli-plugin-babel": "^4.2.3",
-    "@vue/cli-plugin-eslint": "^4.2.3",
-    "@vue/cli-service": "^4.2.3",
-    "babel-eslint": "^10.1.0",
-    "eslint": "^6.8.0",
-    "eslint-plugin-vue": "^6.2.1",
-    "eventsource-polyfill": "^0.9.6",
-    "vue-template-compiler": "^2.6.11",
-    "webpack-hot-middleware": "^2.25.0"
-  },
-  "eslintConfig": {
-    "root": true,
-    "env": {
-      "node": true
-    },
-    "extends": [
-      "plugin:vue/essential",
-      "eslint:recommended"
-    ],
-    "rules": {},
-    "parserOptions": {
-      "parser": "babel-eslint"
-    }
-  },
-  "postcss": {
-    "plugins": {
-      "autoprefixer": {}
-    }
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not ie <= 8"
-  ]
+    "@vitejs/plugin-vue": "^2.3.1",
+    "vite": "^2.9.5"
+  }
 }

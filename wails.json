@@ -1,0 +1,13 @@
+{
+    "name": "PMD Agent",
+    "author": {
+        "name": "Jeff Dupont",
+        "email": "jeff.dupont@gmail.com"
+    },
+    "version": "0.2.0",
+    "outputfilename": "pmd-agent-gui",
+    "frontend:install": "npm install",
+    "frontend:build": "npm run build",
+    "frontend:dev:watcher": "npm run dev"
+}
+

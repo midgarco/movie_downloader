@@ -65,6 +65,8 @@
 </template>
 
 <script>
+import { Search, Download } from '../../wailsjs/go/main/App'
+
 export default {
   name: "Search",
   data() {
@@ -88,7 +90,7 @@ export default {
         return;
       }
 
-      window.backend.Agent.Search(value).then((resp) => {
+      Search(value).then((resp) => {
         this.loading = false;
         if (!resp.results.movies) {
           this.hasError = true
@@ -104,7 +106,7 @@ export default {
       });
     },
     downloadMovie: function (movie) {
-      window.backend.Agent.Download(JSON.stringify(movie)).then(() => {
+      Download(JSON.stringify(movie)).then(() => {
         console.log("done");
       });
     },

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -15,7 +14,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/cavaliercoder/grab"
+	"github.com/cavaliergopher/grab/v3"
 	"github.com/midgarco/movie_downloader/config"
 	"github.com/midgarco/movie_downloader/cookiejar"
 	"github.com/midgarco/movie_downloader/movie"
@@ -131,9 +130,13 @@ func (s *server) Search(ctx context.Context, req *moviedownloader.SearchRequest)
 	resp := &moviedownloader.SearchResponse{}
 
 	defer func(resp *moviedownloader.SearchResponse) {
+		var movieCount int
+		if resp.Results != nil {
+			movieCount = len(resp.Results.Movies)
+		}
 		log.WithFields(log.Fields{
 			// "response": resp,
-			"found": len(resp.Results.Movies),
+			"found": movieCount,
 		}).Info("search response")
 	}(resp)
 
@@ -155,7 +158,8 @@ func (s *server) Search(ctx context.Context, req *moviedownloader.SearchRequest)
 	request, err := http.NewRequest(http.MethodGet, uri, nil)
 	if err != nil {
 		log.WithError(err).Error("failed creating request")
-		return nil, err
+		st := status.New(codes.Internal, "failed creating request")
+		return nil, st.Err()
 	}
 
 	// set the basic auth
@@ -170,14 +174,22 @@ func (s *server) Search(ctx context.Context, req *moviedownloader.SearchRequest)
 	res, err := client.Do(request)
 	if err != nil {
 		log.WithError(err).Error("search request failed")
-		return nil, err
+		st := status.New(codes.Internal, "search request failed")
+		return nil, st.Err()
 	}
 	defer res.Body.Close()
+
+	if res.StatusCode != 200 {
+		log.Error(res.Status)
+		st := status.New(codes.Code(res.StatusCode), res.Status)
+		return nil, st.Err()
+	}
 
 	results := &search.Results{}
 	if err := json.NewDecoder(res.Body).Decode(results); err != nil {
 		log.WithError(err).Error("decoding search response")
-		return nil, err
+		st := status.New(codes.Internal, "decoding search response")
+		return nil, st.Err()
 	}
 
 	// format results for the response
@@ -191,18 +203,21 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 	mv, err := movie.MapFromProtoObject(req.Movie)
 	if err != nil {
 		log.WithError(err).Error("failed to map proto object")
-		return nil, err
+		st := status.New(codes.Internal, "failed to map proto object")
+		return nil, st.Err()
 	}
 	log.WithField("id", mv.ID).Info("download request")
 
 	if mv.Virus {
 		log.Error("attempted movie contains a virus")
-		return nil, errors.New("movie contains virus")
+		st := status.New(codes.FailedPrecondition, "movie contains virus")
+		return nil, st.Err()
 	}
 
 	if mv.ID == "" || mv.Extension == "" || mv.Filename == "" {
 		log.WithField("movie", fmt.Sprintf("%#v", mv)).Error("malformed movie data")
-		return nil, errors.New("malformed movie")
+		st := status.New(codes.FailedPrecondition, "malformed movie data")
+		return nil, st.Err()
 	}
 
 	uri := fmt.Sprintf(s.downloadUrlTemplate, mv.ID, mv.Extension, mv.Filename)
@@ -211,7 +226,8 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 	request, err := grab.NewRequest(".", uri)
 	if err != nil {
 		log.WithError(err).Error("creating grab request")
-		return nil, errors.New("failed grab request")
+		st := status.New(codes.Internal, "failed grab request")
+		return nil, st.Err()
 	}
 
 	request.HTTPRequest.SetBasicAuth(viper.GetString("USERNAME"), viper.GetString("PASSWORD"))
@@ -249,6 +265,25 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 
 		log.Info("downloading: " + mv.Filename + mv.Extension)
 
+		// start UI loop
+		t := time.NewTicker(500 * time.Millisecond)
+		defer t.Stop()
+
+	Loop:
+		for {
+			select {
+			case <-t.C:
+				stats.BytesCompleted = resp.BytesComplete()
+				stats.BytesPerSecond = int64(resp.BytesPerSecond())
+				stats.Size = resp.Size()
+				stats.Progress = int64(100 * resp.Progress())
+
+			case <-resp.Done:
+				// download is complete
+				break Loop
+			}
+		}
+
 		// check for errors
 		if resp.Err() != nil {
 			log.WithError(resp.Err()).Error("download failed")
@@ -256,15 +291,15 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 			return
 		}
 
-		// print progress until transfer is complete
-		for !resp.IsComplete() {
-			stats.BytesCompleted = int64(resp.BytesComplete())
-			stats.BytesPerSecond = int64(resp.BytesPerSecond())
-			stats.Size = int64(resp.Size)
-			stats.Progress = int64(100 * resp.Progress())
+		// // print progress until transfer is complete
+		// for !resp.IsComplete() {
+		// 	stats.BytesCompleted = resp.BytesComplete()
+		// 	stats.BytesPerSecond = int64(resp.BytesPerSecond())
+		// 	stats.Size = resp.Size()
+		// 	stats.Progress = int64(100 * resp.Progress())
 
-			time.Sleep(200 * time.Millisecond)
-		}
+		// 	time.Sleep(200 * time.Millisecond)
+		// }
 		if resp.IsComplete() {
 			stats.Progress = 100
 			stats.BytesCompleted = stats.Size
@@ -364,7 +399,6 @@ func (s *server) Completed(ctx context.Context, req *moviedownloader.CompletedRe
 
 			if err := os.Rename(filename, destfile); err != nil {
 				log.WithError(err).Error("failed to move file")
-				return nil, err
 			}
 
 			s.mu.Lock()
