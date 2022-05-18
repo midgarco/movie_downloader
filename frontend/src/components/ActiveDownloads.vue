@@ -13,7 +13,7 @@
             <td class="text-right">
               <small
                 class="font-weight-lighter"
-              >{{ item.bytes_completed | formatBytes }} / {{ item.size | formatBytes }} @ {{ item.bytes_per_second | formatBytes }}/s</small>
+              >{{ formatBytes(item.bytes_completed) }} / {{ formatBytes(item.size) }} @ {{ formatBytes(item.bytes_per_second) }}/s</small>
             </td>
           </tr>
           <tr>
@@ -39,7 +39,7 @@
 
 <script>
 import prettyBytes from "pretty-bytes";
-import * as Wails from '@wailsapp/runtime';
+import { Complete } from "../../wailsjs/go/main/App";
 
 export default {
   name: "ActiveDownloads",
@@ -48,22 +48,21 @@ export default {
       downloads: [],
     };
   },
-  filters: {
+  mounted() {
+    window.runtime.EventsOn("progress", (downloads) => {
+        this.downloads = downloads
+    })
+  },
+  methods: {
     formatBytes: function (value) {
+      console.log(value, "format bytes")
       if (!value) {
         return;
       }
       return prettyBytes(value);
     },
-  },
-  mounted() {
-    Wails.Events.On("progress", (downloads) => {
-        this.downloads = downloads
-    })
-  },
-  methods: {
     completeDownload: function (value) {
-      window.backend.Agent.Complete(parseInt(value)).then(() => {});
+      Complete(parseInt(value)).then(() => {});
     },
   },
 };

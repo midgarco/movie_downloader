@@ -1,5 +1,5 @@
 <template>
-  <div id="app" class="container">
+  <div class="container">
     <div class="p-4 p-md-5 text-white bg-dark" v-if="showConfigWindow">
       <div class="col-md-6 px-0 text-white">
         <div class="form-group">
@@ -42,14 +42,14 @@
 </template>
 
 
-<script>
-import "./assets/css/bootstrap.css";
-import "./assets/css/open-iconic-bootstrap.css";
-import "./assets/css/main.css";
+<script setup>
+import ActiveDownloads from "./components/ActiveDownloads.vue";
+import Search from "./components/Search.vue";
+import Log from "./components/Log.vue";
+</script>
 
-import ActiveDownloads from "./components/ActiveDownloads";
-import Search from "./components/Search";
-import Log from "./components/Log";
+<script>
+import { GetEndpoint, SaveEndpoint } from "../wailsjs/go/main/App";
 
 export default {
   name: "App",
@@ -65,7 +65,7 @@ export default {
     };
   },
   created() {
-    window.backend.Agent.GetEndpoint().then((endpoint) => {
+    GetEndpoint().then((endpoint) => {
       this.endpoint = endpoint;
       if (this.endpoint != "") {
         this.showConfig(false);
@@ -77,7 +77,7 @@ export default {
       this.showConfigWindow = show;
     },
     saveConfig: function () {
-      window.backend.Agent.SaveEndpoint(this.endpoint).then(() => {
+      SaveEndpoint(this.endpoint).then(() => {
         this.showConfig(false);
       });
     },
