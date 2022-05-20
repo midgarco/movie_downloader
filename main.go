@@ -104,6 +104,7 @@ func (a *App) GetEndpoint() string {
 
 //
 func (a *App) SaveEndpoint(endpoint string) error {
+	runtime.LogDebugf(a.ctx, "Save endpoint: %s", endpoint)
 	viper.Set("GRPC_ENDPOINT", endpoint)
 
 	// update the configuration file

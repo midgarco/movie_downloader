@@ -5,10 +5,9 @@
         <div class="form-group">
           <label for="endpoint">GRPC Server Endpoint</label>
           <input
-            type="email"
+            type="text"
             class="form-control"
             id="endpoint"
-            aria-describedby="emailHelp"
             v-model="endpoint"
           />
         </div>
@@ -77,6 +76,7 @@ export default {
       this.showConfigWindow = show;
     },
     saveConfig: function () {
+      console.log(this.endpoint)
       SaveEndpoint(this.endpoint).then(() => {
         this.showConfig(false);
       });

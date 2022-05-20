@@ -243,7 +243,6 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 
 	// establish the client for connection
 	var httpClient = &http.Client{
-		// Timeout:   10 * time.Second,
 		Transport: tran,
 	}
 
@@ -291,15 +290,6 @@ func (s *server) Download(ctx context.Context, req *moviedownloader.DownloadRequ
 			return
 		}
 
-		// // print progress until transfer is complete
-		// for !resp.IsComplete() {
-		// 	stats.BytesCompleted = resp.BytesComplete()
-		// 	stats.BytesPerSecond = int64(resp.BytesPerSecond())
-		// 	stats.Size = resp.Size()
-		// 	stats.Progress = int64(100 * resp.Progress())
-
-		// 	time.Sleep(200 * time.Millisecond)
-		// }
 		if resp.IsComplete() {
 			stats.Progress = 100
 			stats.BytesCompleted = stats.Size
