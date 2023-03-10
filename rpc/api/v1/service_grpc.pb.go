@@ -33,7 +33,7 @@ func NewMovieDownloaderServiceClient(cc grpc.ClientConnInterface) MovieDownloade
 
 func (c *movieDownloaderServiceClient) Search(ctx context.Context, in *SearchRequest, opts ...grpc.CallOption) (*SearchResponse, error) {
 	out := new(SearchResponse)
-	err := c.cc.Invoke(ctx, "/moviedownloader.MovieDownloaderService/Search", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/midgarco.pmd.api.v1.MovieDownloaderService/Search", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (c *movieDownloaderServiceClient) Search(ctx context.Context, in *SearchReq
 
 func (c *movieDownloaderServiceClient) Download(ctx context.Context, in *DownloadRequest, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := c.cc.Invoke(ctx, "/moviedownloader.MovieDownloaderService/Download", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/midgarco.pmd.api.v1.MovieDownloaderService/Download", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func (c *movieDownloaderServiceClient) Download(ctx context.Context, in *Downloa
 }
 
 func (c *movieDownloaderServiceClient) Progress(ctx context.Context, in *ProgressRequest, opts ...grpc.CallOption) (MovieDownloaderService_ProgressClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_MovieDownloaderService_serviceDesc.Streams[0], "/moviedownloader.MovieDownloaderService/Progress", opts...)
+	stream, err := c.cc.NewStream(ctx, &_MovieDownloaderService_serviceDesc.Streams[0], "/midgarco.pmd.api.v1.MovieDownloaderService/Progress", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (x *movieDownloaderServiceProgressClient) Recv() (*ProgressResponse, error)
 
 func (c *movieDownloaderServiceClient) Completed(ctx context.Context, in *CompletedRequest, opts ...grpc.CallOption) (*CompletedResponse, error) {
 	out := new(CompletedResponse)
-	err := c.cc.Invoke(ctx, "/moviedownloader.MovieDownloaderService/Completed", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/midgarco.pmd.api.v1.MovieDownloaderService/Completed", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func _MovieDownloaderService_Search_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/moviedownloader.MovieDownloaderService/Search",
+		FullMethod: "/midgarco.pmd.api.v1.MovieDownloaderService/Search",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MovieDownloaderServiceServer).Search(ctx, req.(*SearchRequest))
@@ -156,7 +156,7 @@ func _MovieDownloaderService_Download_Handler(srv interface{}, ctx context.Conte
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/moviedownloader.MovieDownloaderService/Download",
+		FullMethod: "/midgarco.pmd.api.v1.MovieDownloaderService/Download",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MovieDownloaderServiceServer).Download(ctx, req.(*DownloadRequest))
@@ -195,7 +195,7 @@ func _MovieDownloaderService_Completed_Handler(srv interface{}, ctx context.Cont
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/moviedownloader.MovieDownloaderService/Completed",
+		FullMethod: "/midgarco.pmd.api.v1.MovieDownloaderService/Completed",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MovieDownloaderServiceServer).Completed(ctx, req.(*CompletedRequest))
@@ -204,7 +204,7 @@ func _MovieDownloaderService_Completed_Handler(srv interface{}, ctx context.Cont
 }
 
 var _MovieDownloaderService_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "moviedownloader.MovieDownloaderService",
+	ServiceName: "midgarco.pmd.api.v1.MovieDownloaderService",
 	HandlerType: (*MovieDownloaderServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -227,5 +227,5 @@ var _MovieDownloaderService_serviceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "rpc/service.proto",
+	Metadata: "api/v1/service.proto",
 }

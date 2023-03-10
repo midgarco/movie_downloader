@@ -18,7 +18,7 @@ import (
 	"github.com/midgarco/movie_downloader/config"
 	"github.com/midgarco/movie_downloader/cookiejar"
 	"github.com/midgarco/movie_downloader/movie"
-	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
+	moviedownloader "github.com/midgarco/movie_downloader/rpc/api/v1"
 	"github.com/midgarco/movie_downloader/search"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc/codes"

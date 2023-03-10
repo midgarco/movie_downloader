@@ -1,0 +1,11 @@
+type: google.api.Service
+config_version: 3
+
+http:
+  rules:
+    - selector: midgarco.pmd.api.v1.MovieDownloaderService.Search
+      post: /search
+      body: "*"
+    - selector: midgarco.pmd.api.v1.MovieDownloaderService.Download
+      post: /download
+      body: "*"

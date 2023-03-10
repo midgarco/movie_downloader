@@ -2,7 +2,7 @@ package search
 
 import (
 	"github.com/midgarco/movie_downloader/movie"
-	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
+	moviedownloader "github.com/midgarco/movie_downloader/rpc/api/v1"
 )
 
 // Results ...

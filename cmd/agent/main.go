@@ -19,7 +19,7 @@ import (
 	"github.com/jroimartin/gocui"
 	"github.com/midgarco/movie_downloader/config"
 	"github.com/midgarco/movie_downloader/log/gui"
-	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
+	moviedownloader "github.com/midgarco/movie_downloader/rpc/api/v1"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/keepalive"

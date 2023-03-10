@@ -25,28 +25,40 @@ serve: server
 	@./bin/pmd-server
 
 pb:
-	@protoc -I/usr/local/include -I. \
-		-I${GOPATH}/src \
-		-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
-		--go_out=. \
-		--go-grpc_out=. \
-		--go-grpc_opt require_unimplemented_servers=false \
-		rpc/service.proto
-	@protoc -I/usr/local/include -I. \
-		-I${GOPATH}/src \
-		-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
-		--grpc-gateway_out=logtostderr=true:. \
-		rpc/service.proto
-	@protoc -I/usr/local/include -I. \
-		-I${GOPATH}/src \
-		-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
-		--swagger_out=logtostderr=true:. \
-		rpc/service.proto	
+	@docker run --rm \
+		--platform linux/amd64 \
+		-v ${PWD}/:/app \
+		-e INPUT_PATH=./proto/midgarco \
+		-e OUTPUT_PATH=./ \
+		-e PROTO_FILE=api/v1/service.proto \
+		-e GEN_GO=true \
+		-e GEN_GO_GRPC=true \
+		-e GEN_GRPC_GATEWAY=true \
+		-e GRPC_API_CONFIGURATION=./proto/midgarco/api/v1/service.yaml \
+		proto:dev -v --output-prefix-path /rpc/
 
-server: 
+	# @protoc -I/usr/local/include -I. \
+	# 	-I${GOPATH}/src \
+	# 	-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+	# 	--go_out=. \
+	# 	--go-grpc_out=. \
+	# 	--go-grpc_opt require_unimplemented_servers=false \
+	# 	rpc/service.proto
+	# @protoc -I/usr/local/include -I. \
+	# 	-I${GOPATH}/src \
+	# 	-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+	# 	--grpc-gateway_out=logtostderr=true:. \
+	# 	rpc/service.proto
+	# @protoc -I/usr/local/include -I. \
+	# 	-I${GOPATH}/src \
+	# 	-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+	# 	--swagger_out=logtostderr=true:. \
+	# 	rpc/service.proto
+
+server:
 	go build $(LDFLAGS) -o ./bin/pmd-server -v ./cmd/server
 
-agent: 
+agent:
 	go build $(LDFLAGS) -o ./bin/pmd-agent -v ./cmd/agent
 
 start: agent

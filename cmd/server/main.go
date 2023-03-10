@@ -12,7 +12,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
+	moviedownloader "github.com/midgarco/movie_downloader/rpc/api/v1"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/protojson"

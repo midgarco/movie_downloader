@@ -1,18 +1,18 @@
 syntax = "proto3";
 
-package moviedownloader;
-option go_package="rpc/moviedownloader";
-import "google/api/annotations.proto";
+package midgarco.pmd.api.v1;
+
+option go_package = "github.com/midgarco/movie_downloader/rpc/api/v1;moviedownloader";
 
 message Empty{}
 
 message Movie {
 	string id = 1;
-	string filename = 2; 
-	string codec = 3; 
-	string runtime = 4; 
+	string filename = 2;
+	string codec = 3;
+	string runtime = 4;
 	string extension = 5;
-	string resolution = 6; 
+	string resolution = 6;
 	string size = 7;
 	string post_date = 8;
 	string subject = 9;
@@ -25,7 +25,7 @@ message Movie {
 	int32 bps = 15;
 	int32 sample_rate = 16;
 	double fps = 17;
-	string audio_codec = 18; 
+	string audio_codec = 18;
 	string poster = 19;
 	string primary_url = 20;
 	string fallback_url = 21;
@@ -33,7 +33,7 @@ message Movie {
 	string type = 23;
 	int32 ts = 24;
 	repeated string sub_languages = 25;
-	int32 raw_size = 26;	
+	int32 raw_size = 26;
 }
 
 // message GSColumn {
@@ -43,29 +43,29 @@ message Movie {
 
 message SearchResults {
 	// string base_url = 1;
-	// string classic_thumbs = 2; 
+	// string classic_thumbs = 2;
     repeated Movie movies = 3;
-	// string dl_farm = 4; 
-	// string dl_port = 5; 
-	// string down_url = 6; 
+	// string dl_farm = 4;
+	// string dl_port = 5;
+	// string down_url = 6;
 	// Fields        map[string][]string `json:"fields"`
 	// Groups        map[string][]int    `json:"groups"`
 	// repeated GSColumn gs_columns = 9;
-	// int32 h_info = 10; 
+	// int32 h_info = 10;
 	// int32 hidden = 11;
-	// int32 hthm = 12; 
+	// int32 hthm = 12;
 	// string large_thumb = 13;
 	// string large_thumb_size = 14;
-	int32 num_pages = 15; 
-	int32 page = 16; 
+	int32 num_pages = 15;
+	int32 page = 16;
 	string per_page = 17;
-	int32 count = 18; 
-	int32 returned = 19; 
-	// string ss = 20; 
-	// string st = 21; 
-	// string stemmed = 22; 
-	// string thumb_url = 23; 
-	// int32 unfiltered_results = 24; 
+	int32 count = 18;
+	int32 returned = 19;
+	// string ss = 20;
+	// string st = 21;
+	// string stemmed = 22;
+	// string thumb_url = 23;
+	// int32 unfiltered_results = 24;
 }
 
 message SearchRequest {
@@ -84,8 +84,8 @@ message Progress {
 	int64 bytes_per_second = 2;
 	int64 bytes_completed = 3;
 	int64 size = 4;
-	int64 progress = 5; 
-	Movie details = 6; 
+	int64 progress = 5;
+	Movie details = 6;
 	string error = 7;
 }
 
@@ -102,18 +102,8 @@ message CompletedResponse {
 }
 
 service MovieDownloaderService {
-    rpc Search(SearchRequest) returns (SearchResponse) {
-        option (google.api.http) = {
-            post: "/search"
-            body: "*"
-        };
-	}
-	rpc Download(DownloadRequest) returns (Empty) {
-		option (google.api.http) = {
-			post: "/download"
-			body: "*"
-		};
-	}
+    rpc Search(SearchRequest) returns (SearchResponse) {}
+	rpc Download(DownloadRequest) returns (Empty) {}
 	rpc Progress(ProgressRequest) returns (stream ProgressResponse) {}
 	rpc Completed(CompletedRequest) returns (CompletedResponse) {}
 }

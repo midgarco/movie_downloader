@@ -13,7 +13,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/midgarco/movie_downloader/config"
-	"github.com/midgarco/movie_downloader/rpc/moviedownloader"
+	moviedownloader "github.com/midgarco/movie_downloader/rpc/api/v1"
 	"github.com/spf13/viper"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -26,7 +26,6 @@ var (
 	configFile = flag.String("config", os.Getenv("HOME")+"/.pmd/agent.yaml", "The path to the config.yaml file")
 )
 
-//
 func init() {
 	flag.Parse()
 }
@@ -34,7 +33,6 @@ func init() {
 //go:embed frontend/dist
 var assets embed.FS
 
-//
 func main() {
 	app := App{}
 	err := wails.Run(&options.App{
@@ -53,7 +51,6 @@ func main() {
 	}
 }
 
-//
 type App struct {
 	ctx context.Context
 
@@ -62,7 +59,6 @@ type App struct {
 	downloads map[int32]*moviedownloader.Progress
 }
 
-//
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
@@ -97,12 +93,10 @@ func (a *App) startup(ctx context.Context) {
 	}
 }
 
-//
 func (a *App) GetEndpoint() string {
 	return viper.GetString("GRPC_ENDPOINT")
 }
 
-//
 func (a *App) SaveEndpoint(endpoint string) error {
 	runtime.LogDebugf(a.ctx, "Save endpoint: %s", endpoint)
 	viper.Set("GRPC_ENDPOINT", endpoint)
@@ -126,7 +120,6 @@ func (a *App) SaveEndpoint(endpoint string) error {
 	return nil
 }
 
-//
 func (a *App) createConnection() error {
 	var opts []grpc.DialOption
 	var kacp = keepalive.ClientParameters{
@@ -144,7 +137,6 @@ func (a *App) createConnection() error {
 	return nil
 }
 
-//
 func (a *App) Search(query string) (*moviedownloader.SearchResponse, error) {
 	client := moviedownloader.NewMovieDownloaderServiceClient(a.conn)
 
@@ -156,7 +148,6 @@ func (a *App) Search(query string) (*moviedownloader.SearchResponse, error) {
 	return results, nil
 }
 
-//
 func (a *App) Download(selected string) error {
 	movie := &moviedownloader.Movie{}
 	if err := json.Unmarshal([]byte(selected), movie); err != nil {
@@ -174,7 +165,6 @@ func (a *App) Download(selected string) error {
 	return nil
 }
 
-//
 func (a *App) domready(ctx context.Context) {
 	runtime.LogInfo(a.ctx, "Start monitor active downloads")
 
@@ -210,7 +200,6 @@ func (a *App) domready(ctx context.Context) {
 	}(client)
 }
 
-//
 func (a *App) Complete(id int32) error {
 	client := moviedownloader.NewMovieDownloaderServiceClient(a.conn)
 
