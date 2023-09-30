@@ -37,24 +37,6 @@ pb:
 		-e GRPC_API_CONFIGURATION=./proto/midgarco/api/v1/service.yaml \
 		proto:dev -v --output-prefix-path /rpc/
 
-	# @protoc -I/usr/local/include -I. \
-	# 	-I${GOPATH}/src \
-	# 	-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
-	# 	--go_out=. \
-	# 	--go-grpc_out=. \
-	# 	--go-grpc_opt require_unimplemented_servers=false \
-	# 	rpc/service.proto
-	# @protoc -I/usr/local/include -I. \
-	# 	-I${GOPATH}/src \
-	# 	-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
-	# 	--grpc-gateway_out=logtostderr=true:. \
-	# 	rpc/service.proto
-	# @protoc -I/usr/local/include -I. \
-	# 	-I${GOPATH}/src \
-	# 	-I${GOPATH}/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
-	# 	--swagger_out=logtostderr=true:. \
-	# 	rpc/service.proto
-
 server:
 	go build $(LDFLAGS) -o ./bin/pmd-server -v ./cmd/server
 
