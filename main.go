@@ -19,12 +19,11 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/keepalive"
 )
 
-var (
-	configFile = flag.String("config", os.Getenv("HOME")+"/.pmd/agent.yaml", "The path to the config.yaml file")
-)
+var configFile = flag.String("config", os.Getenv("HOME")+"/.pmd/agent.yaml", "The path to the config.yaml file")
 
 func init() {
 	flag.Parse()
@@ -122,12 +121,12 @@ func (a *App) SaveEndpoint(endpoint string) error {
 
 func (a *App) createConnection() error {
 	var opts []grpc.DialOption
-	var kacp = keepalive.ClientParameters{
+	kacp := keepalive.ClientParameters{
 		Time: time.Duration(10) * time.Second,
 		// Timeout:             time.Second,
 		// PermitWithoutStream: true,
 	}
-	opts = append(opts, grpc.WithInsecure(), grpc.WithKeepaliveParams(kacp))
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithKeepaliveParams(kacp))
 	conn, err := grpc.Dial(a.endpoint, opts...)
 	if err != nil {
 		runtime.LogError(a.ctx, err.Error())
